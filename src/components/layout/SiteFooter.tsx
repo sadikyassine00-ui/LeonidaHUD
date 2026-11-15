@@ -42,7 +42,7 @@ export function SiteFooter() {
 
         <div className="md:col-span-3 space-y-2.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[#F4F5F7]">
-            Product
+            Product &amp; Legal
           </div>
           <ul className="space-y-2">
             <li>
@@ -60,21 +60,58 @@ export function SiteFooter() {
             </li>
             <li>
               <Link
-                href="/signin"
+                href="/terms"
                 className="hover:text-[#F4F5F7] transition-colors"
               >
-                Launch Free Overlay
+                Terms of Service
               </Link>
             </li>
             <li>
               <Link
-                href="/remote"
+                href="/privacy"
                 className="hover:text-[#F4F5F7] transition-colors"
               >
-                Mobile Remote
+                Privacy Policy
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/refunds"
+                className="hover:text-[#F4F5F7] transition-colors"
+              >
+                Refund Policy
               </Link>
             </li>
           </ul>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-white/8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#8D96A5]">
+        <div>
+          &copy; 2026 Leonida HUD |{" "}
+          <a
+            href="mailto:support@leonidahud.com"
+            className="hover:text-[#F4F5F7] transition-colors"
+          >
+            support@leonidahud.com
+          </a>
+        </div>
+        <div className="flex items-center gap-4">
+          <Link href="/terms" className="hover:text-[#F4F5F7] transition-colors">
+            Terms
+          </Link>
+          <Link
+            href="/privacy"
+            className="hover:text-[#F4F5F7] transition-colors"
+          >
+            Privacy
+          </Link>
+          <Link
+            href="/refunds"
+            className="hover:text-[#F4F5F7] transition-colors"
+          >
+            Refunds
+          </Link>
         </div>
       </div>
     </footer>
