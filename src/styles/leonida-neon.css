@@ -1,0 +1,324 @@
+/* Leonida HUD - "Neon sunset, broadcast viewfinder" Design Tokens & Motion */
+
+:root,
+[data-leonida-theme="neon-sunset"] {
+  --bg-night: #11072b;
+  --bg-deep: #1b0b3a;
+  --track: #3c2464;
+  --line-muted: #7846aa;
+  --purple: #5b1a8f;
+  --pink: #ff3d7f;
+  --orange: #ffa23a;
+  --sun-yellow: #ffd65c;
+  --teal: #19e3c6;
+  --text: #f6f2ff;
+  --text-dim: #b9a8da;
+
+  --sunset-gradient: linear-gradient(
+    180deg,
+    #5b1a8f 0%,
+    #ff3d7f 55%,
+    #ffa23a 100%
+  );
+  --sun-gradient: linear-gradient(180deg, #ffd65c 0%, #ff3d7f 100%);
+
+  --radius-chip: 12px;
+  --radius-card: 20px;
+  --radius-sheet: 28px;
+}
+
+.neon-surface {
+  background-color: var(--bg-night);
+  color: var(--text);
+  font-family: var(--font-inter), "Inter", system-ui, sans-serif;
+}
+
+.neon-display {
+  font-family: var(--font-poppins), "Poppins", system-ui, sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.neon-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chroma-offset look: solid teal duplicate offset ~3.5% down/right, white-to-pink vertical gradient face */
+.chroma-wordmark {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-poppins), "Poppins", system-ui, sans-serif;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.chroma-wordmark::before {
+  content: attr(data-text);
+  position: absolute;
+  left: 0.038em;
+  top: 0.038em;
+  color: var(--teal);
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.chroma-wordmark > span {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, #f6f2ff 20%, #ff3d7f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Card surface with 1px inner top highlight */
+.neon-card {
+  background-color: var(--bg-deep);
+  border: 1px solid rgba(120, 70, 170, 0.35);
+  box-shadow: inset 0 1px 0 rgba(246, 242, 255, 0.12);
+  border-radius: var(--radius-card);
+}
+
+.neon-glow-pink {
+  box-shadow:
+    inset 0 1px 0 rgba(246, 242, 255, 0.14),
+    0 0 24px rgba(255, 61, 127, 0.35);
+}
+
+.neon-glow-teal {
+  box-shadow:
+    inset 0 1px 0 rgba(246, 242, 255, 0.14),
+    0 0 24px rgba(25, 227, 198, 0.32);
+}
+
+.neon-glow-orange {
+  box-shadow:
+    inset 0 1px 0 rgba(246, 242, 255, 0.14),
+    0 0 24px rgba(255, 162, 58, 0.32);
+}
+
+.neon-glow-yellow {
+  box-shadow:
+    inset 0 1px 0 rgba(246, 242, 255, 0.16),
+    0 0 24px rgba(255, 214, 92, 0.32);
+}
+
+/* Accessible teal focus rings */
+.neon-focus:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* Keyframes */
+@keyframes odometer-up {
+  0% {
+    transform: translateY(65%);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(-6%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0%);
+    opacity: 1;
+  }
+}
+
+@keyframes odometer-down {
+  0% {
+    transform: translateY(-65%);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(6%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0%);
+    opacity: 1;
+  }
+}
+
+.animate-odometer-up {
+  animation: odometer-up 300ms cubic-bezier(0.22, 1.28, 0.36, 1) both;
+}
+
+.animate-odometer-down {
+  animation: odometer-down 300ms cubic-bezier(0.22, 1.28, 0.36, 1) both;
+}
+
+@keyframes stamp-pop {
+  0% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+  12% {
+    transform: scale(1) translate(-3px, 2px);
+    opacity: 1;
+  }
+  16% {
+    transform: scale(1) translate(3px, -2px);
+  }
+  20% {
+    transform: scale(1) translate(-2px, 0);
+  }
+  25% {
+    transform: scale(1) translate(0, 0);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+}
+
+@keyframes scanline-sweep {
+  0% {
+    transform: translateY(-120%);
+  }
+  100% {
+    transform: translateY(220%);
+  }
+}
+
+.animate-stamp-pop {
+  animation: stamp-pop 1200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-scanline {
+  animation: scanline-sweep 650ms ease-out forwards;
+}
+
+@keyframes cash-float {
+  0% {
+    transform: translateY(8px) scale(0.92);
+    opacity: 0;
+  }
+  18% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-34px) scale(0.98);
+    opacity: 0;
+  }
+}
+
+.animate-cash-float {
+  animation: cash-float 1100ms ease-out forwards;
+}
+
+@keyframes sunrise-burst {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-sunrise-burst {
+  animation: sunrise-burst 950ms ease-out forwards;
+}
+
+@keyframes sun-slice-load {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scaleX(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes tab-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-tab-in {
+  animation: tab-slide-in 220ms ease-out both;
+}
+
+@keyframes bracket-lock {
+  0% {
+    transform: scale(1.06);
+    opacity: 0.4;
+  }
+  70% {
+    transform: scale(0.99);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-bracket-lock {
+  animation: bracket-lock 320ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+@keyframes undo-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.animate-undo-shrink {
+  transform-origin: left center;
+  animation: undo-shrink 4000ms linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-odometer-up,
+  .animate-odometer-down,
+  .animate-stamp-pop,
+  .animate-cash-float,
+  .animate-sunrise-burst,
+  .animate-tab-in,
+  .animate-bracket-lock {
+    animation-duration: 150ms !important;
+    animation-name: fade-only !important;
+  }
+
+  .animate-scanline {
+    display: none !important;
+  }
+}
+
+@keyframes fade-only {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Barlow_Condensed } from "next/font/google";
+import {
+  Plus_Jakarta_Sans,
+  Barlow_Condensed,
+  Poppins,
+  Inter,
+} from "next/font/google";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -13,6 +18,19 @@ const barlowCondensed = Barlow_Condensed({
   variable: "--font-hud",
   subsets: ["latin"],
   weight: ["700", "800"],
+});
+
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: ["700", "800"],
+  style: ["normal", "italic"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -51,7 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakartaSans.variable} ${barlowCondensed.variable} h-full antialiased`}
+      className={`${plusJakartaSans.variable} ${barlowCondensed.variable} ${poppins.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#0B0D12] text-[#F4F5F7] font-sans selection:bg-[#F25C54]/30 selection:text-[#F4F5F7]">
         {children}
