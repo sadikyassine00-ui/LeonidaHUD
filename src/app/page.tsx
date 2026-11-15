@@ -1,4 +1,4 @@
-import Image from "next/image";
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -11,12 +11,85 @@ import {
   SmartphoneNfc,
 } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { LandingHeroSandbox } from "@/components/landing/LandingHeroSandbox";
 import { PaddleUpgradeButtons } from "@/components/billing/PaddleUpgradeButtons";
 import { auth } from "@/auth";
 import { getUserBillingInfo } from "@/lib/overlay-service";
+import { SITE_URL } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Leonida HUD: Live OBS Overlay for PS5 & Xbox Streamers",
+  description:
+    "Add live Story %, Cash, Wasted/Busted counters, and Twitch or Kick chat polls to PS5 and Xbox OBS streams in 60 seconds. Control from phone or Stream Deck.",
+  alternates: {
+    canonical: `${SITE_URL}/`,
+  },
+};
 
 export const dynamic = "force-dynamic";
+
+const HOME_FAQS = [
+  {
+    question: "Does Leonida HUD work with PS5 and Xbox capture cards?",
+    answer:
+      "Yes, works with Elgato, AVerMedia, and any capture card feeding into OBS Studio as a standard 1920x1080 Browser Source.",
+  },
+  {
+    question: "Do I need PC mods or software downloads?",
+    answer:
+      "No downloads, plugins, or EXE files. Paste one Browser Source URL into OBS and control everything from your phone browser or Stream Deck.",
+  },
+  {
+    question: "How does 9:16 Vertical Clip-Safe Mode work?",
+    answer:
+      "Flip one toggle in your dashboard to stack your counters and Top Hook Banner inside a vertical frame so TikTok, Reels, and Whop clippers never crop out your HUD.",
+  },
+  {
+    question:
+      "What is the difference between Free Starter and the $49 Launch Pass?",
+    answer:
+      "Free Starter gives you all 4 HUD widgets, phone control, Stream Deck triggers, and chat polls with a small bottom corner watermark. The $49 one-time Launch Pass removes the watermark permanently and unlocks 9:16 Clip-Safe Mode, Top Hook Banners, custom themes, and editable chapter checklists.",
+  },
+];
+
+const SOFTWARE_APP_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Leonida HUD",
+  applicationCategory: "MultimediaApplication",
+  operatingSystem: "Web, OBS Studio, Windows, macOS",
+  url: `${SITE_URL}/`,
+  description:
+    "Live OBS Browser Source overlay and mobile/Stream Deck remote for PS5 and Xbox console streamers.",
+  offers: [
+    {
+      "@type": "Offer",
+      name: "Starter",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    {
+      "@type": "Offer",
+      name: "Pro Broadcaster Launch Pass",
+      price: "49",
+      priceCurrency: "USD",
+    },
+  ],
+};
+
+const FAQ_PAGE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: HOME_FAQS.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
 
 export default async function HomePage() {
   const session = await auth();
@@ -236,22 +309,55 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Frequently Asked Questions */}
+        <section
+          id="faq"
+          className="border-t border-white/8 py-16 px-4 sm:px-6"
+        >
+          <div className="max-w-4xl mx-auto space-y-8">
+            <div className="space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-[#F7B267]">
+                FAQ
+              </div>
+              <h2 className="font-hud font-extrabold text-3xl sm:text-4xl uppercase tracking-tight text-[#F4F5F7]">
+                Console Capture &amp; OBS Questions
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {HOME_FAQS.map((item) => (
+                <div
+                  key={item.question}
+                  className="rounded-2xl bg-[#131720] border border-white/8 p-5 space-y-2"
+                >
+                  <h3 className="text-sm font-bold text-[#F4F5F7]">
+                    {item.question}
+                  </h3>
+                  <p className="text-sm text-[#8D96A5] leading-relaxed">
+                    {item.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t border-white/8 py-8 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#8D96A5]">
-          <Image
-            src="/logos/leonida-hud-logo-cropped.png"
-            alt="Leonida HUD"
-            width={160}
-            height={55}
-            className="h-11 w-auto object-contain"
-          />
-          <div>
-            Built for PS5 and Xbox Series X|S OBS capture setups.
-          </div>
-        </div>
-      </footer>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(SOFTWARE_APP_JSON_LD),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(FAQ_PAGE_JSON_LD),
+        }}
+      />
+
+      <SiteFooter />
     </div>
   );
 }

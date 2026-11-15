@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { TopNav } from "@/components/layout/TopNav";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { getAuthProviderFlags } from "@/lib/session";
+
+export const metadata: Metadata = {
+  title: "Sign In | Leonida HUD",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export const dynamic = "force-dynamic";
 

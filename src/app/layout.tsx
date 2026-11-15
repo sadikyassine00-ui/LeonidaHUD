@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Barlow_Condensed } from "next/font/google";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -15,7 +16,8 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "Leonida HUD | Live Broadcast Overlay & Mobile Remote for Console Streamers",
+  metadataBase: new URL(SITE_URL),
+  title: "Leonida HUD: Live OBS Overlay for PS5 & Xbox Streamers",
   description:
     "Live PS5 and Xbox Series X|S HUD widgets controlled from your phone, Stream Deck, or Twitch and Kick chat polls.",
   icons: {
