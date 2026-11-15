@@ -1,23 +1,18 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Layers, SlidersHorizontal, Smartphone } from "lucide-react";
-import { SlicedSunMark } from "@/components/neon/SlicedSun";
+import { SlidersHorizontal, Smartphone } from "lucide-react";
 
 interface TopNavProps {
-  activePath?: "/" | "/dashboard" | "/remote" | "/dashboard/vision" | "/studio";
+  activePath?: "/" | "/dashboard" | "/remote" | "/dashboard/vision";
   isSignedIn?: boolean;
 }
 
 export function TopNav({ activePath = "/", isSignedIn = false }: TopNavProps) {
   const navItems: Array<{
-    href: "/studio" | "/dashboard" | "/remote";
+    href: "/" | "/dashboard" | "/remote";
     label: string;
     icon: React.ReactNode;
   }> = [
-    {
-      href: "/studio",
-      label: "Neon Studio",
-      icon: <Layers className="w-4 h-4" />,
-    },
     {
       href: "/dashboard",
       label: "Dashboard",
@@ -31,21 +26,17 @@ export function TopNav({ activePath = "/", isSignedIn = false }: TopNavProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#7846AA]/35 bg-[#11072B]/92 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0B0D12]/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-3 shrink-0">
-          <SlicedSunMark size={42} />
-          <div className="leading-none">
-            <div
-              className="chroma-wordmark text-xl sm:text-2xl"
-              data-text="LEONIDA HUD"
-            >
-              <span>LEONIDA HUD</span>
-            </div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#B9A8DA]">
-              Broadcast Viewfinder
-            </div>
-          </div>
+        <Link href="/" className="flex items-center shrink-0">
+          <Image
+            src="/logos/leonida-hud-logo-cropped.png"
+            alt="Leonida HUD"
+            width={200}
+            height={69}
+            className="h-12 sm:h-14 w-auto object-contain"
+            priority
+          />
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
@@ -57,8 +48,8 @@ export function TopNav({ activePath = "/", isSignedIn = false }: TopNavProps) {
                 href={item.href}
                 className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
                   active
-                    ? "bg-[#1B0B3A] text-[#19E3C6] border border-[#19E3C6]/50"
-                    : "text-[#B9A8DA] hover:text-[#F6F2FF]"
+                    ? "bg-[#131720] text-[#F4F5F7] border border-white/12"
+                    : "text-[#8D96A5] hover:text-[#F4F5F7]"
                 }`}
               >
                 {item.icon}
@@ -70,15 +61,15 @@ export function TopNav({ activePath = "/", isSignedIn = false }: TopNavProps) {
 
         <div className="flex items-center gap-2.5 shrink-0">
           <Link
-            href="/controller"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#1B0B3A] border border-[#19E3C6]/45 hover:border-[#19E3C6] px-3.5 py-2 text-sm font-semibold text-[#19E3C6] transition-colors"
+            href="/remote"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#131720] border border-white/10 hover:border-white/25 px-3.5 py-2 text-sm font-semibold text-[#F4F5F7] transition-colors"
           >
-            <Smartphone className="w-4 h-4" />
-            <span>Open Controller</span>
+            <Smartphone className="w-4 h-4 text-[#2EC4B6]" />
+            <span>Open Remote</span>
           </Link>
           <Link
             href={isSignedIn ? "/dashboard" : "/signin"}
-            className="inline-flex items-center rounded-xl bg-[#FF3D7F] hover:opacity-95 px-4 py-2 text-sm font-extrabold text-[#F6F2FF] neon-glow-pink transition-opacity"
+            className="inline-flex items-center rounded-xl bg-[#F25C54] hover:bg-[#F25C54]/90 px-4 py-2 text-sm font-extrabold text-white transition-colors"
           >
             {isSignedIn ? "Setup Hub" : "Launch Free Overlay"}
           </Link>
