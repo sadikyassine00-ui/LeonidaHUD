@@ -71,7 +71,7 @@ export default function RootLayout({
       lang="en"
       className={`${plusJakartaSans.variable} ${barlowCondensed.variable} ${poppins.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0B0D12] text-[#F4F5F7] font-sans selection:bg-[#F25C54]/30 selection:text-[#F4F5F7]">
+      <body className="min-h-full flex flex-col bg-[#11072B] text-[#F6F2FF] font-sans selection:bg-[#FF3D7F]/30 selection:text-[#F6F2FF]">
         {children}
       </body>
     </html>

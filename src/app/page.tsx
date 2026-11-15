@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { ViewfinderBrackets } from "@/components/neon/ViewfinderBrackets";
 import { LandingHeroSandbox } from "@/components/landing/LandingHeroSandbox";
 import { PaddleUpgradeButtons } from "@/components/billing/PaddleUpgradeButtons";
 import { auth } from "@/auth";
@@ -124,62 +125,79 @@ export default async function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#F4F5F7] flex flex-col">
+    <div className="min-h-screen bg-[#11072B] text-[#F6F2FF] flex flex-col">
       <TopNav activePath="/" isSignedIn={Boolean(userId)} />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-16 sm:pt-14 sm:pb-20 space-y-10">
-          <div className="max-w-4xl space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#131720] border border-white/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-[#F7B267]">
-              <span className="w-2 h-2 rounded-full bg-[#F25C54]" />
-              <span>Ready for the November 19, 2026 Console Launch</span>
+        {/* Hero Section with Sunset Gradient Accent */}
+        <section className="relative overflow-hidden">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[420px] opacity-30"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 0%, #FF3D7F 0%, #5B1A8F 45%, transparent 75%)",
+            }}
+          />
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-16 sm:pt-14 sm:pb-20 space-y-10">
+            <div className="max-w-4xl space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#1B0B3A] border border-[#FF3D7F]/45 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider text-[#FFD65C]">
+                <span className="w-2 h-2 rounded-full bg-[#FF3D7F] animate-pulse" />
+                <span>Ready for the November 19, 2026 Console Launch</span>
+              </div>
+
+              <h1 className="neon-display text-5xl sm:text-6xl lg:text-7xl uppercase tracking-tight leading-[0.95] text-[#F6F2FF]">
+                Console Streamers Don&apos;t Get PC Mods. Run Live Story &amp; Cash
+                HUDs Anyway.
+              </h1>
+
+              <p className="text-base sm:text-lg text-[#B9A8DA] max-w-2xl leading-relaxed">
+                Built for PS5 and Xbox capture card setups. Drop one Browser
+                Source into OBS and control your Story %, Cash counter,
+                Wasted/Busted tallies, and live chat polls straight from your
+                phone or Stream Deck.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <Link
+                  href="/studio"
+                  className="h-12 px-6 rounded-xl bg-[#FF3D7F] hover:opacity-95 text-[#F6F2FF] font-extrabold text-sm inline-flex items-center gap-2 neon-glow-pink transition-opacity"
+                >
+                  <span>Open Neon Studio</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href={userId ? "/dashboard" : "/signin"}
+                  className="h-12 px-5 rounded-xl bg-[#1B0B3A] border border-[#19E3C6]/50 hover:border-[#19E3C6] text-[#19E3C6] font-extrabold text-sm inline-flex items-center gap-2 transition-colors"
+                >
+                  <span>Launch Free Overlay</span>
+                </Link>
+                <a
+                  href="#live-sandbox"
+                  className="h-12 px-5 rounded-xl bg-[#1B0B3A] border border-[#7846AA]/50 hover:border-[#F6F2FF]/40 text-[#F6F2FF] font-bold text-sm inline-flex items-center gap-2 transition-colors"
+                >
+                  <ArrowDown className="w-4 h-4 text-[#19E3C6]" />
+                  <span>Test Live Demo Below</span>
+                </a>
+              </div>
             </div>
 
-            <h1 className="font-hud font-extrabold text-5xl sm:text-6xl lg:text-7xl uppercase tracking-tight leading-[0.95] text-[#F4F5F7]">
-              Console Streamers Don&apos;t Get PC Mods. Run Live Story &amp; Cash
-              HUDs Anyway.
-            </h1>
-
-            <p className="text-base sm:text-lg text-[#8D96A5] max-w-2xl leading-relaxed">
-              Built for PS5 and Xbox capture card setups. Drop one Browser
-              Source into OBS and control your Story %, Cash counter,
-              Wasted/Busted tallies, and live chat polls straight from your
-              phone or Stream Deck.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <Link
-                href={userId ? "/dashboard" : "/signin"}
-                className="h-12 px-6 rounded-xl bg-[#F25C54] hover:bg-[#F25C54]/90 text-white font-extrabold text-sm inline-flex items-center gap-2 transition-colors"
-              >
-                <span>Launch Free Overlay</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a
-                href="#live-sandbox"
-                className="h-12 px-5 rounded-xl bg-[#131720] border border-white/12 hover:border-white/25 text-[#F4F5F7] font-bold text-sm inline-flex items-center gap-2 transition-colors"
-              >
-                <ArrowDown className="w-4 h-4 text-[#2EC4B6]" />
-                <span>Test Live Demo Below</span>
-              </a>
+            {/* Interactive Live Sandbox */}
+            <div id="live-sandbox" className="relative scroll-mt-20 p-2">
+              <ViewfinderBrackets size={18} thickness={2.5} offset={0} />
+              <LandingHeroSandbox />
             </div>
-          </div>
-
-          {/* Interactive Live Sandbox */}
-          <div id="live-sandbox" className="scroll-mt-20">
-            <LandingHeroSandbox />
           </div>
         </section>
 
         {/* Feature Grid */}
-        <section className="border-t border-white/8 bg-[#0E1118] py-16 sm:py-20">
+        <section className="border-t border-[#7846AA]/35 bg-[#160835] py-16 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-10">
             <div className="max-w-2xl space-y-2">
-              <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#F7B267]">
+              <div className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#FFD65C]">
                 BUILT FOR LAUNCH NIGHT
               </div>
-              <h2 className="font-hud font-extrabold text-4xl sm:text-5xl uppercase tracking-wide">
+              <h2 className="neon-display text-4xl sm:text-5xl uppercase tracking-wide text-[#F6F2FF]">
                 EVERYTHING YOU NEED ON STREAM. NOTHING IN YOUR WAY.
               </h2>
             </div>
@@ -188,15 +206,15 @@ export default async function HomePage() {
               {features.map((feat) => (
                 <div
                   key={feat.title}
-                  className="broadcast-card rounded-2xl p-6 space-y-3"
+                  className="broadcast-card rounded-[20px] p-6 space-y-3"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[#0B0D12] border border-white/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#11072B] border border-[#7846AA]/50 flex items-center justify-center">
                     {feat.icon}
                   </div>
-                  <h3 className="font-hud font-extrabold text-2xl uppercase tracking-wide text-[#F4F5F7]">
+                  <h3 className="neon-display text-2xl uppercase tracking-wide text-[#F6F2FF]">
                     {feat.title}
                   </h3>
-                  <p className="text-sm text-[#8D96A5] leading-relaxed">
+                  <p className="text-sm text-[#B9A8DA] leading-relaxed">
                     {feat.description}
                   </p>
                 </div>
@@ -206,33 +224,33 @@ export default async function HomePage() {
         </section>
 
         {/* Pricing Section */}
-        <section id="pricing" className="border-t border-white/8 py-16 sm:py-20">
+        <section id="pricing" className="border-t border-[#7846AA]/35 py-16 sm:py-20">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-10">
             <div className="text-center space-y-2">
-              <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#2EC4B6]">
+              <div className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#19E3C6]">
                 STRAIGHTFORWARD PRICING
               </div>
-              <h2 className="font-hud font-extrabold text-4xl sm:text-5xl uppercase tracking-wide">
+              <h2 className="neon-display text-4xl sm:text-5xl uppercase tracking-wide text-[#F6F2FF]">
                 START FREE. UPGRADE FOR CLEAN STREAMS.
               </h2>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* Starter Free */}
-              <div className="broadcast-card rounded-2xl p-7 flex flex-col justify-between space-y-6">
+              <div className="broadcast-card rounded-[20px] p-7 flex flex-col justify-between space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-hud font-extrabold text-3xl uppercase text-[#F4F5F7]">
+                    <span className="neon-display text-3xl uppercase text-[#F6F2FF]">
                       Starter
                     </span>
-                    <span className="rounded-full bg-white/8 px-3 py-1 text-xs font-bold text-[#8D96A5]">
+                    <span className="rounded-full bg-[#3C2464] px-3 py-1 text-xs font-bold text-[#B9A8DA]">
                       FREE FOREVER
                     </span>
                   </div>
-                  <div className="font-hud font-extrabold text-5xl text-[#F4F5F7]">
+                  <div className="neon-display text-5xl text-[#F6F2FF]">
                     $0
                   </div>
-                  <ul className="space-y-2.5 text-sm text-[#8D96A5]">
+                  <ul className="space-y-2.5 text-sm text-[#B9A8DA]">
                     {[
                       "All 4 modular OBS corner widgets",
                       "Mobile Remote & 350px OBS Browser Dock",

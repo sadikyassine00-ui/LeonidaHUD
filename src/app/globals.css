@@ -1,14 +1,15 @@
 @import "tailwindcss";
+@import "../styles/leonida-neon.css";
 
 :root {
-  --bg-asphalt: #0b0d12;
-  --surface-elevated: #131720;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --accent-coral: #f25c54;
-  --accent-amber: #f7b267;
-  --accent-emerald: #2ec4b6;
-  --text-alabaster: #f4f5f7;
-  --text-slate: #8d96a5;
+  --bg-asphalt: #11072b;
+  --surface-elevated: #1b0b3a;
+  --border-subtle: rgba(120, 70, 170, 0.35);
+  --accent-coral: #ff3d7f;
+  --accent-amber: #ffa23a;
+  --accent-emerald: #19e3c6;
+  --text-alabaster: #f6f2ff;
+  --text-slate: #b9a8da;
 }
 
 @theme inline {
@@ -19,19 +20,19 @@
   --color-amber: var(--accent-amber);
   --color-emerald: var(--accent-emerald);
   --color-slate: var(--text-slate);
-  --font-sans: var(--font-sans), "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-hud: var(--font-hud), "Barlow Condensed", system-ui, sans-serif;
+  --font-sans: var(--font-inter), var(--font-sans), "Inter", system-ui, sans-serif;
+  --font-hud: var(--font-poppins), var(--font-hud), "Poppins", system-ui, sans-serif;
 }
 
 html,
 body {
-  background-color: #0b0d12;
-  color: #f4f5f7;
-  font-family: var(--font-sans), "Plus Jakarta Sans", system-ui, sans-serif;
+  background-color: #11072b;
+  color: #f6f2ff;
+  font-family: var(--font-inter), var(--font-sans), "Inter", system-ui, sans-serif;
 }
 
 .font-hud {
-  font-family: var(--font-hud), "Barlow Condensed", system-ui, sans-serif;
+  font-family: var(--font-poppins), var(--font-hud), "Poppins", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -47,8 +48,9 @@ body:has([data-obs-overlay="true"]) {
 
 /* Subtle broadcast card surface */
 .broadcast-card {
-  background-color: #131720;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #1b0b3a;
+  border: 1px solid rgba(120, 70, 170, 0.35);
+  box-shadow: inset 0 1px 0 rgba(246, 242, 255, 0.12);
 }
 
 /* Custom thin scrollbars for remote mission list */
