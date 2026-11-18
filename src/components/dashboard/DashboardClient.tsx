@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { PaddleUpgradeButtons } from "@/components/billing/PaddleUpgradeButtons";
-import { OverlayHudCanvas } from "@/components/hud/OverlayHudCanvas";
+import { ScaledHudPreview } from "@/components/hud/ScaledHudPreview";
 import type { HudTheme, OverlayStateSnapshot } from "@/lib/types";
 
 interface DashboardClientProps {
@@ -409,8 +409,8 @@ export function DashboardClient({
                   Theme: {overlay.theme}
                 </span>
               </div>
-              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#191E2B] via-[#131720] to-[#0B0D12] border border-white/10 aspect-video relative">
-                <OverlayHudCanvas state={overlay} mode="preview" />
+              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#191E2B] via-[#131720] to-[#0B0D12] border border-white/10">
+                <ScaledHudPreview state={overlay} />
               </div>
             </section>
 

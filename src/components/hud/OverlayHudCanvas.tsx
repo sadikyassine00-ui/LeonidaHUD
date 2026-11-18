@@ -222,7 +222,7 @@ export function OverlayHudCanvas({
       className={
         isObs
           ? "relative w-[1920px] h-[1080px] overflow-hidden bg-transparent select-none pointer-events-none"
-          : "relative w-full h-full min-h-[390px] sm:min-h-[480px] overflow-hidden select-none"
+          : "relative w-full h-full overflow-hidden select-none"
       }
     >
       {/* TOP-LEFT: STORY & CHAPTER PROGRESS HUD */}
@@ -236,7 +236,7 @@ export function OverlayHudCanvas({
             className={
               isObs
                 ? `absolute top-9 left-10 w-[390px] rounded-xl px-5 py-4 ${tokens.plate}`
-                : `absolute top-3 left-3 sm:top-5 sm:left-5 w-[178px] sm:w-[275px] rounded-xl px-2.5 py-2 sm:px-4 sm:py-3 ${tokens.plate}`
+                : `absolute top-5 left-5 w-[320px] rounded-xl px-4 py-3 ${tokens.plate}`
             }
           >
             <div className="flex items-start justify-between gap-3">
@@ -312,7 +312,7 @@ export function OverlayHudCanvas({
             className={
               isObs
                 ? `absolute top-9 right-10 rounded-xl px-6 py-3.5 text-right ${tokens.plate}`
-                : `absolute top-3 right-3 sm:top-5 sm:right-5 rounded-xl px-2.5 py-2 sm:px-4 sm:py-3 text-right ${tokens.plate}`
+                : `absolute top-5 right-5 rounded-xl px-4 py-3 text-right ${tokens.plate}`
             }
           >
             <div
@@ -337,7 +337,7 @@ export function OverlayHudCanvas({
                   }}
                   transition={{ type: "spring", stiffness: 320, damping: 26 }}
                   className={`font-hud font-extrabold leading-none tracking-tight transition-colors duration-300 ${
-                    isObs ? "text-[46px]" : "text-[22px] sm:text-[34px]"
+                    isObs ? "text-[46px]" : "text-[34px]"
                   } ${
                     cashFlash === "down"
                       ? "text-[#F25C54]"
@@ -365,7 +365,7 @@ export function OverlayHudCanvas({
             className={
               isObs
                 ? `absolute bottom-9 left-10 flex items-center gap-6 rounded-xl px-6 py-4 ${tokens.plate}`
-                : `absolute bottom-[132px] left-3 sm:bottom-5 sm:left-5 flex items-center gap-2.5 sm:gap-5 rounded-xl px-3 py-2 sm:px-4 sm:py-3 ${tokens.plate}`
+                : `absolute bottom-5 left-5 flex items-center gap-5 rounded-xl px-4 py-3 ${tokens.plate}`
             }
           >
             <motion.div
@@ -455,7 +455,7 @@ export function OverlayHudCanvas({
             className={
               isObs
                 ? `absolute bottom-9 right-10 w-[410px] rounded-xl px-5 py-4 ${tokens.plate}`
-                : `absolute bottom-3 left-3 right-3 sm:left-auto sm:bottom-5 sm:right-5 sm:w-[290px] rounded-xl px-3 py-2.5 sm:px-4 sm:py-3.5 ${tokens.plate}`
+                : `absolute bottom-5 right-5 w-[290px] rounded-xl px-4 py-3.5 ${tokens.plate}`
             }
           >
             <div className="flex items-center justify-between gap-2 mb-2">

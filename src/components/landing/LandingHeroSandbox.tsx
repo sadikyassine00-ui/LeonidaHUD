@@ -9,7 +9,7 @@ import {
   Skull,
   Vote,
 } from "lucide-react";
-import { OverlayHudCanvas } from "@/components/hud/OverlayHudCanvas";
+import { ScaledHudPreview } from "@/components/hud/ScaledHudPreview";
 import { DEFAULT_MISSIONS, calculateStoryProgress } from "@/data/missions";
 import type { HudTheme, OverlayStateSnapshot } from "@/lib/types";
 
@@ -132,56 +132,65 @@ export function LandingHeroSandbox() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      <div className="flex justify-center">
+        <div className="inline-flex items-center gap-2 rounded-full bg-[#131720] border border-white/10 px-4 py-1.5 text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#8D96A5]">
+          <span className="w-2 h-2 rounded-full bg-[#F25C54] animate-pulse" />
+          <span>Live PS5 / Xbox Capture Preview | Click Any Button Below</span>
+        </div>
+      </div>
+
       {/* 16:9 Live Broadcast Simulation Frame */}
       <div className="relative rounded-2xl overflow-hidden border border-white/12 bg-[#0B0D12] shadow-2xl shadow-black/60">
         {/* Stylized Dusk Coastal Broadcast Feed Backdrop (Original Geometric Art) */}
-        <div className="relative min-h-[390px] sm:min-h-0 sm:aspect-video w-full overflow-hidden bg-gradient-to-b from-[#1D1B2A] via-[#2B202A] to-[#0B0D12]">
-          {/* Warm dusk horizon glow */}
-          <div
-            className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse at 50% 68%, rgba(242, 92, 84, 0.28) 0%, rgba(247, 178, 103, 0.14) 35%, rgba(11, 13, 18, 0) 72%)",
-            }}
-          />
+        <ScaledHudPreview
+          state={state}
+          className="bg-gradient-to-b from-[#1D1B2A] via-[#2B202A] to-[#0B0D12]"
+          backdrop={
+            <>
+              {/* Warm dusk horizon glow */}
+              <div
+                className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at 50% 68%, rgba(242, 92, 84, 0.28) 0%, rgba(247, 178, 103, 0.14) 35%, rgba(11, 13, 18, 0) 72%)",
+                }}
+              />
 
-          {/* Clean geometric coastal skyline silhouettes */}
-          <svg
-            viewBox="0 0 1200 675"
-            preserveAspectRatio="xMidYMid slice"
-            className="absolute inset-0 w-full h-full opacity-55 pointer-events-none"
-            aria-hidden="true"
-          >
-            <circle cx="600" cy="390" r="115" fill="#F7B267" fillOpacity="0.16" />
-            <path
-              d="M0 470 L90 470 L90 360 L145 360 L145 470 L185 470 L185 315 L250 315 L250 470 L310 470 L310 390 L380 390 L380 470 L450 470 L450 335 L515 335 L515 470 L680 470 L680 345 L750 345 L750 470 L815 470 L815 295 L885 295 L885 470 L945 470 L945 380 L1020 380 L1020 470 L1090 470 L1090 350 L1150 350 L1150 470 L1200 470 L1200 675 L0 675 Z"
-              fill="#0B0D12"
-            />
-            <path
-              d="M0 535 H1200"
-              stroke="#F25C54"
-              strokeOpacity="0.24"
-              strokeWidth="2"
-            />
-            <path
-              d="M0 585 H1200"
-              stroke="#2EC4B6"
-              strokeOpacity="0.16"
-              strokeWidth="1.5"
-            />
-          </svg>
-
-          {/* Center label showing live console capture preview */}
-          <div className="hidden sm:flex absolute inset-0 items-center justify-center pointer-events-none">
-            <div className="rounded-full bg-[#0B0D12]/65 border border-white/10 px-4 py-1.5 text-xs font-semibold tracking-wider uppercase text-[#8D96A5] backdrop-blur-sm">
-              Live PS5 / Xbox Capture Preview | Click Any Button Below
-            </div>
-          </div>
-
-          {/* Actual Modular Overlay HUD Component */}
-          <OverlayHudCanvas state={state} mode="preview" />
-        </div>
+              {/* Clean geometric coastal skyline silhouettes */}
+              <svg
+                viewBox="0 0 1200 675"
+                preserveAspectRatio="xMidYMid slice"
+                className="absolute inset-0 w-full h-full opacity-55 pointer-events-none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="600"
+                  cy="390"
+                  r="115"
+                  fill="#F7B267"
+                  fillOpacity="0.16"
+                />
+                <path
+                  d="M0 470 L90 470 L90 360 L145 360 L145 470 L185 470 L185 315 L250 315 L250 470 L310 470 L310 390 L380 390 L380 470 L450 470 L450 335 L515 335 L515 470 L680 470 L680 345 L750 345 L750 470 L815 470 L815 295 L885 295 L885 470 L945 470 L945 380 L1020 380 L1020 470 L1090 470 L1090 350 L1150 350 L1150 470 L1200 470 L1200 675 L0 675 Z"
+                  fill="#0B0D12"
+                />
+                <path
+                  d="M0 535 H1200"
+                  stroke="#F25C54"
+                  strokeOpacity="0.24"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M0 585 H1200"
+                  stroke="#2EC4B6"
+                  strokeOpacity="0.16"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </>
+          }
+        />
       </div>
 
       {/* Interactive Remote Sandbox Bar */}
