@@ -115,6 +115,7 @@ const adapter = hasDatabaseConfig()
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter,
+  trustHost: true,
   secret:
     process.env.AUTH_SECRET ||
     (process.env.NODE_ENV !== "production"
@@ -143,6 +144,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
+      if (user.id) {
+        await getOrCreateOverlayForUser(user.id);
+      }
+    },
+    async signIn({ user }) {
       if (user.id) {
         await getOrCreateOverlayForUser(user.id);
       }

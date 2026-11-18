@@ -1,15 +1,37 @@
 import fs from "fs";
 import path from "path";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { neon } from "@neondatabase/serverless";
 import { getDb, hasDatabaseConfig, schema } from "@/db";
 import { calculateStoryProgress } from "@/data/missions";
 import { generateId, generatePublicKey, generateSecretTriggerKey } from "@/lib/keys";
 import type {
   HudTheme,
   OverlayStateSnapshot,
+  PlanTier,
+  PlanType,
   PollSnapshot,
   UserPlan,
 } from "@/lib/types";
+
+let schemaInitPromise: Promise<void> | null = null;
+
+async function ensureUserSchemaColumns(): Promise<void> {
+  if (!hasDatabaseConfig()) return;
+  if (!schemaInitPromise) {
+    schemaInitPromise = (async () => {
+      try {
+        const client = neon(process.env.DATABASE_URL!);
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_type text NOT NULL DEFAULT 'free'`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS overlay_token text`;
+      } catch (err) {
+        schemaInitPromise = null;
+        throw err;
+      }
+    })();
+  }
+  await schemaInitPromise;
+}
 
 export const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
 export const DEMO_USER_EMAIL = "streamer@leonidahud.com";
@@ -25,9 +47,11 @@ interface DevStoreData {
       name: string | null;
       image: string | null;
       plan: UserPlan;
+      planType: PlanType;
       paddleCustomerId: string | null;
       paddleSubscriptionId: string | null;
       subscriptionStatus: string;
+      overlayToken: string | null;
       createdAt: string;
     }
   >;
@@ -48,9 +72,11 @@ function createInitialDevStore(): DevStoreData {
         name: "Leonida Broadcaster",
         image: null,
         plan: "free",
+        planType: "free",
         paddleCustomerId: null,
         paddleSubscriptionId: null,
         subscriptionStatus: "inactive",
+        overlayToken: DEMO_PUBLIC_KEY,
         createdAt: now,
       },
     },
@@ -135,10 +161,10 @@ function toOverlaySnapshot(
   plan: UserPlan,
   poll: typeof schema.polls.$inferSelect | null
 ): OverlayStateSnapshot {
-  const effectiveTheme: HudTheme =
-    plan === "free"
-      ? "sunset-broadcast"
-      : ((overlay.theme as HudTheme) || "sunset-broadcast");
+  const isPro = plan === "pro";
+  const effectiveTheme: HudTheme = isPro
+    ? ((overlay.theme as HudTheme) || "sunset-broadcast")
+    : "sunset-broadcast";
 
   return {
     id: overlay.id,
@@ -152,17 +178,17 @@ function toOverlaySnapshot(
     storyChapter: overlay.storyChapter,
     storyPercent: overlay.storyPercent,
     completedMissionIds: overlay.completedMissionIds ?? [],
-    customMissions: overlay.customMissions ?? [],
+    customMissions: isPro ? (overlay.customMissions ?? []) : [],
     wastedCount: overlay.wastedCount,
     bustedCount: overlay.bustedCount,
     cashBalance: Number(overlay.cashBalance ?? 0),
     showStoryWidget: overlay.showStoryWidget,
     showDeathWidget: overlay.showDeathWidget,
-    showCashWidget: overlay.showCashWidget,
-    showPollWidget: overlay.showPollWidget,
+    showCashWidget: isPro ? overlay.showCashWidget : false,
+    showPollWidget: isPro ? overlay.showPollWidget : false,
     stateVersion: overlay.stateVersion,
     updatedAt: overlay.updatedAt.toISOString(),
-    activePoll: toPollSnapshot(poll),
+    activePoll: isPro ? toPollSnapshot(poll) : null,
   };
 }
 
@@ -179,13 +205,19 @@ export async function getOverlayByPublicKey(
     if (!overlay) return null;
     const owner = store.users[overlay.userId];
     const plan: UserPlan = owner?.plan ?? "free";
+    const isPro = plan === "pro";
     return {
       ...overlay,
       plan,
-      theme: plan === "free" ? "sunset-broadcast" : overlay.theme,
+      theme: isPro ? overlay.theme : "sunset-broadcast",
+      customMissions: isPro ? overlay.customMissions : [],
+      showCashWidget: isPro ? overlay.showCashWidget : false,
+      showPollWidget: isPro ? overlay.showPollWidget : false,
+      activePoll: isPro ? overlay.activePoll : null,
     };
   }
 
+  await ensureUserSchemaColumns();
   const db = getDb();
   const rows = await db
     .select({
@@ -257,9 +289,11 @@ export async function getOrCreateOverlayForUser(
         name: "Leonida Broadcaster",
         image: null,
         plan: "free",
+        planType: "free",
         paddleCustomerId: null,
         paddleSubscriptionId: null,
         subscriptionStatus: "inactive",
+        overlayToken: null,
         createdAt: new Date().toISOString(),
       };
       store.users[userId] = user;
@@ -295,14 +329,21 @@ export async function getOrCreateOverlayForUser(
       };
       store.overlays[id] = overlay;
     }
+    user.overlayToken = overlay.publicKey;
     writeDevStore(store);
+    const isPro = user.plan === "pro";
     return {
       ...overlay,
       plan: user.plan,
-      theme: user.plan === "free" ? "sunset-broadcast" : overlay.theme,
+      theme: isPro ? overlay.theme : "sunset-broadcast",
+      customMissions: isPro ? overlay.customMissions : [],
+      showCashWidget: isPro ? overlay.showCashWidget : false,
+      showPollWidget: isPro ? overlay.showPollWidget : false,
+      activePoll: isPro ? overlay.activePoll : null,
     };
   }
 
+  await ensureUserSchemaColumns();
   const db = getDb();
   const userRows = await db
     .select()
@@ -332,6 +373,12 @@ export async function getOrCreateOverlayForUser(
   }
 
   const overlay = existing[0];
+  if (!user.overlayToken) {
+    await db
+      .update(schema.users)
+      .set({ overlayToken: overlay.publicKey })
+      .where(eq(schema.users.id, userId));
+  }
   const activePolls = await db
     .select()
     .from(schema.polls)
@@ -852,26 +899,34 @@ export async function getUserBillingInfo(userId: string): Promise<{
   email: string;
   name: string | null;
   plan: UserPlan;
+  planTier: PlanTier;
+  planType: PlanType;
   subscriptionStatus: string;
   paddleCustomerId: string | null;
   paddleSubscriptionId: string | null;
+  overlayToken: string | null;
 } | null> {
   assertDbOrDev();
   if (!hasDatabaseConfig()) {
     const store = readDevStore();
     const user = store.users[userId];
     if (!user) return null;
+    const plan: UserPlan = user.plan === "pro" ? "pro" : "free";
     return {
       id: user.id,
       email: user.email,
       name: user.name,
-      plan: user.plan,
+      plan,
+      planTier: plan === "pro" ? "pro" : "starter",
+      planType: user.planType ?? "free",
       subscriptionStatus: user.subscriptionStatus,
       paddleCustomerId: user.paddleCustomerId,
       paddleSubscriptionId: user.paddleSubscriptionId,
+      overlayToken: user.overlayToken ?? null,
     };
   }
 
+  await ensureUserSchemaColumns();
   const db = getDb();
   const rows = await db
     .select()
@@ -881,14 +936,18 @@ export async function getUserBillingInfo(userId: string): Promise<{
 
   if (rows.length === 0) return null;
   const user = rows[0];
+  const plan: UserPlan = user.plan === "pro" ? "pro" : "free";
   return {
     id: user.id,
     email: user.email,
     name: user.name,
-    plan: (user.plan as UserPlan) || "free",
+    plan,
+    planTier: plan === "pro" ? "pro" : "starter",
+    planType: ((user.planType as PlanType) || "free"),
     subscriptionStatus: user.subscriptionStatus,
     paddleCustomerId: user.paddleCustomerId,
     paddleSubscriptionId: user.paddleSubscriptionId,
+    overlayToken: user.overlayToken ?? null,
   };
 }
 
@@ -896,10 +955,13 @@ export async function updateUserPlanFromPaddle(params: {
   eventId: string;
   eventType: string;
   userId?: string | null;
+  customerEmail?: string | null;
   paddleCustomerId?: string | null;
   paddleSubscriptionId?: string | null;
   plan: UserPlan;
+  planType?: PlanType;
   subscriptionStatus: string;
+  isDowngrade?: boolean;
 }): Promise<void> {
   assertDbOrDev();
 
@@ -913,21 +975,33 @@ export async function updateUserPlanFromPaddle(params: {
         (u) => u.paddleCustomerId === params.paddleCustomerId
       );
     }
+    if (!targetUser && params.customerEmail) {
+      const normalized = params.customerEmail.trim().toLowerCase();
+      targetUser = Object.values(store.users).find(
+        (u) => u.email.trim().toLowerCase() === normalized
+      );
+    }
 
     if (targetUser) {
-      targetUser.plan = params.plan;
-      targetUser.subscriptionStatus = params.subscriptionStatus;
-      if (params.paddleCustomerId) {
-        targetUser.paddleCustomerId = params.paddleCustomerId;
-      }
-      if (params.paddleSubscriptionId) {
-        targetUser.paddleSubscriptionId = params.paddleSubscriptionId;
-      }
-      for (const overlay of Object.values(store.overlays)) {
-        if (overlay.userId === targetUser.id) {
-          overlay.plan = params.plan;
-          overlay.stateVersion += 1;
-          overlay.updatedAt = new Date().toISOString();
+      // Never downgrade lifetime Launch Pass holders on subscription events
+      if (!(params.isDowngrade && targetUser.planType === "lifetime")) {
+        targetUser.plan = params.plan;
+        if (params.planType) {
+          targetUser.planType = params.planType;
+        }
+        targetUser.subscriptionStatus = params.subscriptionStatus;
+        if (params.paddleCustomerId) {
+          targetUser.paddleCustomerId = params.paddleCustomerId;
+        }
+        if (params.paddleSubscriptionId) {
+          targetUser.paddleSubscriptionId = params.paddleSubscriptionId;
+        }
+        for (const overlay of Object.values(store.overlays)) {
+          if (overlay.userId === targetUser.id) {
+            overlay.plan = params.plan;
+            overlay.stateVersion += 1;
+            overlay.updatedAt = new Date().toISOString();
+          }
         }
       }
     }
@@ -936,6 +1010,7 @@ export async function updateUserPlanFromPaddle(params: {
     return;
   }
 
+  await ensureUserSchemaColumns();
   const db = getDb();
   const alreadyProcessed = await db
     .select()
@@ -945,38 +1020,62 @@ export async function updateUserPlanFromPaddle(params: {
 
   if (alreadyProcessed.length > 0) return;
 
-  let targetUserId = params.userId ?? null;
-  if (!targetUserId && params.paddleCustomerId) {
+  let targetUser: typeof schema.users.$inferSelect | undefined;
+  if (params.userId) {
     const found = await db
-      .select({ id: schema.users.id })
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, params.userId))
+      .limit(1);
+    targetUser = found[0];
+  }
+  if (!targetUser && params.paddleCustomerId) {
+    const found = await db
+      .select()
       .from(schema.users)
       .where(eq(schema.users.paddleCustomerId, params.paddleCustomerId))
       .limit(1);
-    targetUserId = found[0]?.id ?? null;
+    targetUser = found[0];
+  }
+  if (!targetUser && params.customerEmail) {
+    const normalized = params.customerEmail.trim().toLowerCase();
+    const found = await db
+      .select()
+      .from(schema.users)
+      .where(sql`lower(${schema.users.email}) = ${normalized}`)
+      .limit(1);
+    targetUser = found[0];
   }
 
-  if (targetUserId) {
-    await db
-      .update(schema.users)
-      .set({
-        plan: params.plan,
-        subscriptionStatus: params.subscriptionStatus,
-        ...(params.paddleCustomerId
-          ? { paddleCustomerId: params.paddleCustomerId }
-          : {}),
-        ...(params.paddleSubscriptionId
-          ? { paddleSubscriptionId: params.paddleSubscriptionId }
-          : {}),
-      })
-      .where(eq(schema.users.id, targetUserId));
+  if (targetUser) {
+    // Never downgrade lifetime Launch Pass holders
+    const skipDowngrade =
+      Boolean(params.isDowngrade) && targetUser.planType === "lifetime";
 
-    await db
-      .update(schema.overlays)
-      .set({
-        stateVersion: sql`${schema.overlays.stateVersion} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.overlays.userId, targetUserId));
+    if (!skipDowngrade) {
+      await db
+        .update(schema.users)
+        .set({
+          plan: params.plan,
+          ...(params.planType ? { planType: params.planType } : {}),
+          subscriptionStatus: params.subscriptionStatus,
+          ...(params.paddleCustomerId
+            ? { paddleCustomerId: params.paddleCustomerId }
+            : {}),
+          ...(params.paddleSubscriptionId
+            ? { paddleSubscriptionId: params.paddleSubscriptionId }
+            : {}),
+        })
+        .where(eq(schema.users.id, targetUser.id));
+
+      await db
+        .update(schema.overlays)
+        .set({
+          stateVersion: sql`${schema.overlays.stateVersion} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.overlays.userId, targetUser.id));
+    }
   }
 
   await db

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { TopNav } from "@/components/layout/TopNav";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { getAuthProviderFlags } from "@/lib/session";
@@ -14,9 +16,20 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function SignInPage(props: {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; plan?: string }>;
 }) {
-  const { callbackUrl } = await props.searchParams;
+  const { callbackUrl, plan } = await props.searchParams;
+  const checkoutPlan =
+    plan === "lifetime" || plan === "monthly" ? plan : null;
+  const targetCallbackUrl = checkoutPlan
+    ? `/dashboard?checkout=${checkoutPlan}`
+    : callbackUrl || "/dashboard";
+
+  const session = await auth();
+  if (session?.user?.id) {
+    redirect(targetCallbackUrl);
+  }
+
   const providers = getAuthProviderFlags();
 
   return (
@@ -24,7 +37,8 @@ export default async function SignInPage(props: {
       <TopNav />
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <SignInForm
-          callbackUrl={callbackUrl || "/dashboard"}
+          callbackUrl={targetCallbackUrl}
+          checkoutPlan={checkoutPlan}
           providers={providers}
         />
       </main>

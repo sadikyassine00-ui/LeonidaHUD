@@ -562,13 +562,13 @@ export function OverlayHudCanvas({
         )}
       </AnimatePresence>
 
-      {/* FREE PLAN WATERMARK BADGE */}
+      {/* FREE PLAN WATERMARK BADGE (BOTTOM CORNER) */}
       {state.plan === "free" && (
         <div
           className={
             isObs
-              ? "absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-[#0B0D12]/80 border border-white/10 px-4 py-1 text-[12px] font-hud font-bold tracking-[0.18em] text-[#8D96A5]"
-              : "hidden sm:block absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[#0B0D12]/80 border border-white/10 px-3 py-0.5 text-[10px] font-hud font-bold tracking-[0.18em] text-[#8D96A5]"
+              ? "absolute bottom-4 right-10 rounded-full bg-[#0B0D12]/82 border border-white/12 px-4 py-1 text-[12px] font-hud font-bold tracking-[0.18em] text-[#F7B267]"
+              : "absolute bottom-3 right-4 rounded-full bg-[#0B0D12]/82 border border-white/12 px-3 py-0.5 text-[10px] font-hud font-bold tracking-[0.18em] text-[#F7B267]"
           }
         >
           LEONIDAHUD.COM

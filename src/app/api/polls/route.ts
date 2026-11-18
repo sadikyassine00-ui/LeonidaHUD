@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/session";
 import {
   endOrClearPollForUser,
+  getUserBillingInfo,
   startPollForUser,
 } from "@/lib/overlay-service";
 
@@ -9,6 +10,14 @@ export async function POST(request: NextRequest) {
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const billing = await getUserBillingInfo(userId);
+  if (!billing || billing.plan !== "pro") {
+    return Response.json(
+      { error: "Pro Broadcaster plan required for Live Chat Polls." },
+      { status: 403 }
+    );
   }
 
   let body: Record<string, unknown>;

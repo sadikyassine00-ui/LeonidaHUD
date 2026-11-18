@@ -28,16 +28,20 @@ interface DashboardClientProps {
     email: string;
     name: string | null;
     plan: "free" | "pro";
+    planType?: "free" | "lifetime" | "monthly";
     subscriptionStatus: string;
   };
   hasDatabase: boolean;
+  autoCheckoutPlan?: "lifetime" | "monthly" | null;
 }
 
 export function DashboardClient({
   initialOverlay,
-  user,
+  user: initialUser,
   hasDatabase,
+  autoCheckoutPlan = null,
 }: DashboardClientProps) {
+  const [user, setUser] = useState(initialUser);
   const [overlay, setOverlay] = useState<OverlayStateSnapshot>(initialOverlay);
   const [twitchChannel, setTwitchChannel] = useState(
     initialOverlay.twitchChannel ?? ""
@@ -425,51 +429,62 @@ export function DashboardClient({
                     key: "showStoryWidget" as const,
                     label: "Story Progress",
                     pos: "Top Left",
-                  },
-                  {
-                    key: "showCashWidget" as const,
-                    label: "Cash Ticker",
-                    pos: "Top Right",
+                    proOnly: false,
                   },
                   {
                     key: "showDeathWidget" as const,
                     label: "Wasted & Busted",
                     pos: "Bottom Left",
+                    proOnly: false,
+                  },
+                  {
+                    key: "showCashWidget" as const,
+                    label: "Cash Ticker",
+                    pos: "Top Right",
+                    proOnly: true,
                   },
                   {
                     key: "showPollWidget" as const,
                     label: "Chat Poll Card",
                     pos: "Bottom Right",
+                    proOnly: true,
                   },
                 ].map((item) => {
-                  const enabled = overlay[item.key];
+                  const locked = item.proOnly && user.plan !== "pro";
+                  const enabled = !locked && overlay[item.key];
                   return (
                     <button
                       key={item.key}
                       type="button"
+                      disabled={locked}
                       onClick={() => {
+                        if (locked) return;
                         const nextVal = !enabled;
                         setOverlay((prev) => ({ ...prev, [item.key]: nextVal }));
                         void updateOverlay({ [item.key]: nextVal });
                       }}
                       className={`rounded-xl p-3 text-left border transition-all ${
-                        enabled
-                          ? "bg-[#2EC4B6]/10 border-[#2EC4B6]/40"
-                          : "bg-[#0B0D12] border-white/8 opacity-65"
+                        locked
+                          ? "bg-[#0B0D12] border-white/8 opacity-55 cursor-not-allowed"
+                          : enabled
+                            ? "bg-[#2EC4B6]/10 border-[#2EC4B6]/40"
+                            : "bg-[#0B0D12] border-white/8 opacity-65"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-1">
                         <span className="text-xs font-bold text-[#F4F5F7]">
                           {item.label}
                         </span>
                         <span
                           className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
-                            enabled
-                              ? "bg-[#2EC4B6] text-[#0B0D12]"
-                              : "bg-white/10 text-[#8D96A5]"
+                            locked
+                              ? "bg-[#F7B267]/15 text-[#F7B267]"
+                              : enabled
+                                ? "bg-[#2EC4B6] text-[#0B0D12]"
+                                : "bg-white/10 text-[#8D96A5]"
                           }`}
                         >
-                          {enabled ? "ON" : "OFF"}
+                          {locked ? "PRO" : enabled ? "ON" : "OFF"}
                         </span>
                       </div>
                       <div className="text-[11px] text-[#8D96A5] mt-1">
@@ -548,13 +563,18 @@ export function DashboardClient({
               </div>
               <p className="text-xs text-[#8D96A5]">
                 {user.plan === "pro"
-                  ? `Active Pro plan (${user.subscriptionStatus}). Zero watermark, custom broadcast themes, custom chapter checklists, and unlimited Stream Deck triggers unlocked.`
-                  : "Starter Free includes all 4 HUD widgets, Mobile Remote, Stream Deck triggers, and live chat polls with a bottom-corner LEONIDAHUD.COM watermark. Upgrade to Pro to remove branding and unlock custom themes."}
+                  ? `Active Pro plan (${user.planType === "lifetime" ? "Launch Pass Lifetime" : user.subscriptionStatus}). Zero watermark, all 4 HUD widgets, Live Chat Polls, 9:16 Clip-Safe Mode, custom broadcast themes, and custom chapter checklists unlocked.`
+                  : "Starter Free includes the Story Progress Bar and Wasted/Busted Counter plus Mobile Remote access with a bottom-corner LEONIDAHUD.COM watermark. Upgrade to Pro to remove branding and unlock Cash Ticker, Live Chat Polls, 9:16 Clip-Safe Mode, and custom themes."}
               </p>
               <PaddleUpgradeButtons
                 userId={user.id}
                 userEmail={user.email}
                 currentPlan={user.plan}
+                autoCheckoutPlan={autoCheckoutPlan}
+                onUpgraded={() => {
+                  setUser((prev) => ({ ...prev, plan: "pro" }));
+                  setOverlay((prev) => ({ ...prev, plan: "pro" }));
+                }}
               />
             </section>
           </div>

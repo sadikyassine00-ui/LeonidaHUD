@@ -429,10 +429,32 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
                     Quick Cash Adjuster
                   </h2>
                 </div>
-                <span className="font-hud font-extrabold text-xl text-[#2EC4B6]">
-                  ${overlay.cashBalance.toLocaleString("en-US")}
-                </span>
+                {overlay.plan === "pro" ? (
+                  <span className="font-hud font-extrabold text-xl text-[#2EC4B6]">
+                    ${overlay.cashBalance.toLocaleString("en-US")}
+                  </span>
+                ) : (
+                  <Link
+                    href="/dashboard?checkout=lifetime"
+                    className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#F7B267]/15 text-[#F7B267] hover:bg-[#F7B267]/25"
+                  >
+                    PRO FEATURE
+                  </Link>
+                )}
               </div>
+
+              {overlay.plan !== "pro" ? (
+                <div className="rounded-xl bg-[#0B0D12] border border-white/8 p-3 flex items-center justify-between gap-2 text-xs text-[#8D96A5]">
+                  <span>Upgrade to Pro to unlock the live Cash Ticker widget.</span>
+                  <Link
+                    href="/dashboard?checkout=lifetime"
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-[#F25C54] text-white font-bold"
+                  >
+                    Unlock Pro
+                  </Link>
+                </div>
+              ) : (
+                <>
 
               <div className="grid grid-cols-2 gap-2">
                 {[
@@ -478,6 +500,8 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
                   SET
                 </button>
               </div>
+                </>
+              )}
             </section>
 
             {/* Quick Active Poll Status Preview */}
@@ -668,6 +692,26 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
 
         {activeTab === "polls" && (
           <section className="space-y-3.5">
+            {overlay.plan !== "pro" ? (
+              <div className="broadcast-card rounded-2xl p-5 space-y-3 text-center border-[#F7B267]/30">
+                <div className="inline-block rounded-full bg-[#F7B267]/15 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#F7B267]">
+                  Pro Broadcaster Feature
+                </div>
+                <h2 className="font-hud font-extrabold text-2xl text-[#F4F5F7] uppercase">
+                  Automated Twitch &amp; Kick Chat Polls
+                </h2>
+                <p className="text-xs text-[#8D96A5] leading-relaxed">
+                  Upgrade to the $49 Launch Pass (or $29/mo) to launch automated !A / !B viewer chat polls on your OBS overlay and remove the watermark.
+                </p>
+                <Link
+                  href="/dashboard?checkout=lifetime"
+                  className="inline-flex h-11 px-5 rounded-xl bg-[#F25C54] text-white font-extrabold text-xs items-center justify-center"
+                >
+                  Unlock Pro Launch Pass ($49)
+                </Link>
+              </div>
+            ) : (
+            <>
             {/* Live Chat Connection Status */}
             <div className="broadcast-card rounded-2xl p-3.5 space-y-2">
               <div className="flex items-center justify-between">
@@ -850,6 +894,8 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
                 </button>
               </div>
             </div>
+            </>
+            )}
           </section>
         )}
       </main>

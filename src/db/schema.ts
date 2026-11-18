@@ -18,10 +18,12 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { mode: "date" }),
   name: text("name"),
   image: text("image"),
-  plan: text("plan").default("free").notNull(), // 'free' | 'pro'
+  plan: text("plan").default("free").notNull(), // 'free' (starter) | 'pro'
+  planType: text("plan_type").default("free").notNull(), // 'free' | 'lifetime' | 'monthly'
   paddleCustomerId: text("paddle_customer_id"),
   paddleSubscriptionId: text("paddle_subscription_id"),
   subscriptionStatus: text("subscription_status").default("inactive").notNull(),
+  overlayToken: text("overlay_token"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 

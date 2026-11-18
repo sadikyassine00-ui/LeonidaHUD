@@ -2,6 +2,10 @@ export type HudTheme = "sunset-broadcast" | "minimal-glass" | "tactical-dark";
 
 export type UserPlan = "free" | "pro";
 
+export type PlanTier = "starter" | "pro";
+
+export type PlanType = "free" | "lifetime" | "monthly";
+
 export interface MissionItem {
   id: string;
   chapterNumber: number;

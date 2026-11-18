@@ -9,11 +9,17 @@ import { DashboardClient } from "@/components/dashboard/DashboardClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     redirect("/signin?callbackUrl=/dashboard");
   }
+
+  const { checkout } = await props.searchParams;
+  const autoCheckoutPlan =
+    checkout === "lifetime" || checkout === "monthly" ? checkout : null;
 
   const [overlay, user] = await Promise.all([
     getOrCreateOverlayForUser(userId),
@@ -29,6 +35,7 @@ export default async function DashboardPage() {
       initialOverlay={overlay}
       user={user}
       hasDatabase={hasDatabaseConfig()}
+      autoCheckoutPlan={autoCheckoutPlan}
     />
   );
 }
