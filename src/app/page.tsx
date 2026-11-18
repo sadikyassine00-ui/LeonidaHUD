@@ -130,35 +130,35 @@ export default async function HomePage() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
-          <div className="min-h-[calc(100svh-15rem)] py-12 sm:py-16 flex flex-col items-center justify-center text-center max-w-4xl mx-auto space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#131720] border border-white/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-[#F7B267]">
+          <div className="pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center justify-center text-center max-w-4xl mx-auto space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#131720] border border-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#F7B267]">
               <span className="w-2 h-2 rounded-full bg-[#F25C54]" />
               <span>Ready for the November 19, 2026 Console Launch</span>
             </div>
 
-            <h1 className="font-hud font-extrabold text-5xl sm:text-6xl lg:text-7xl uppercase tracking-tight leading-[0.95] text-[#F4F5F7]">
+            <h1 className="font-hud font-extrabold text-4xl sm:text-5xl lg:text-[3.5rem] uppercase tracking-tight leading-[0.98] text-[#F4F5F7]">
               Console Streamers Don&apos;t Get PC Mods. Run Live Story &amp; Cash
               HUDs Anyway.
             </h1>
 
-            <p className="text-base sm:text-lg text-[#8D96A5] max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base text-[#8D96A5] max-w-xl mx-auto leading-relaxed">
               Built for PS5 and Xbox capture card setups. Drop one Browser
               Source into OBS and control your Story %, Cash counter,
               Wasted/Busted tallies, and live chat polls straight from your
               phone or Stream Deck.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               <Link
                 href={userId ? "/dashboard" : "/signin"}
-                className="h-12 px-6 rounded-xl bg-[#F25C54] hover:bg-[#F25C54]/90 text-white font-extrabold text-sm inline-flex items-center gap-2 transition-colors"
+                className="h-11 px-5 rounded-xl bg-[#F25C54] hover:bg-[#F25C54]/90 text-white font-extrabold text-sm inline-flex items-center gap-2 transition-colors"
               >
                 <span>Launch Free Overlay</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <a
                 href="#live-sandbox"
-                className="h-12 px-5 rounded-xl bg-[#131720] border border-white/12 hover:border-white/25 text-[#F4F5F7] font-bold text-sm inline-flex items-center gap-2 transition-colors"
+                className="h-11 px-5 rounded-xl bg-[#131720] border border-white/12 hover:border-white/25 text-[#F4F5F7] font-bold text-sm inline-flex items-center gap-2 transition-colors"
               >
                 <ArrowDown className="w-4 h-4 text-[#2EC4B6]" />
                 <span>Test Live Demo Below</span>
