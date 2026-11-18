@@ -223,7 +223,7 @@ export function DashboardClient({
           <div className="lg:col-span-7 space-y-6">
             {/* OBS Browser Source Card */}
             <section className="broadcast-card rounded-2xl p-5 sm:p-6 space-y-4">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-xl bg-[#F25C54]/15 border border-[#F25C54]/30 flex items-center justify-center text-[#F25C54]">
                     <Monitor className="w-5 h-5" />

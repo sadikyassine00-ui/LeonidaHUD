@@ -136,7 +136,7 @@ export function LandingHeroSandbox() {
       {/* 16:9 Live Broadcast Simulation Frame */}
       <div className="relative rounded-2xl overflow-hidden border border-white/12 bg-[#0B0D12] shadow-2xl shadow-black/60">
         {/* Stylized Dusk Coastal Broadcast Feed Backdrop (Original Geometric Art) */}
-        <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-b from-[#1D1B2A] via-[#2B202A] to-[#0B0D12]">
+        <div className="relative min-h-[390px] sm:min-h-0 sm:aspect-video w-full overflow-hidden bg-gradient-to-b from-[#1D1B2A] via-[#2B202A] to-[#0B0D12]">
           {/* Warm dusk horizon glow */}
           <div
             className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none"
@@ -173,8 +173,8 @@ export function LandingHeroSandbox() {
           </svg>
 
           {/* Center label showing live console capture preview */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="rounded-full bg-[#0B0D12]/65 border border-white/10 px-4 py-1.5 text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#8D96A5] backdrop-blur-sm">
+          <div className="hidden sm:flex absolute inset-0 items-center justify-center pointer-events-none">
+            <div className="rounded-full bg-[#0B0D12]/65 border border-white/10 px-4 py-1.5 text-xs font-semibold tracking-wider uppercase text-[#8D96A5] backdrop-blur-sm">
               Live PS5 / Xbox Capture Preview | Click Any Button Below
             </div>
           </div>

@@ -27,14 +27,14 @@ export function TopNav({ activePath = "/", isSignedIn = false }: TopNavProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0B0D12]/90 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
         <Link href="/" className="flex items-center shrink-0">
           <Image
             src="/logos/leonida-hud-logo-cropped.png"
             alt="Leonida HUD"
             width={200}
             height={69}
-            className="h-12 sm:h-14 w-auto object-contain"
+            className="h-9 sm:h-12 md:h-14 w-auto object-contain"
             priority
           />
         </Link>
@@ -59,17 +59,18 @@ export function TopNav({ activePath = "/", isSignedIn = false }: TopNavProps) {
           })}
         </nav>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/remote"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#131720] border border-white/10 hover:border-white/25 px-3.5 py-2 text-sm font-semibold text-[#F4F5F7] transition-colors"
+            aria-label="Open Mobile Remote"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#131720] border border-white/10 hover:border-white/25 px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#F4F5F7] transition-colors"
           >
             <Smartphone className="w-4 h-4 text-[#2EC4B6]" />
-            <span>Open Remote</span>
+            <span className="hidden sm:inline">Open Remote</span>
           </Link>
           <Link
             href={isSignedIn ? "/dashboard" : "/signin"}
-            className="inline-flex items-center rounded-xl bg-[#F25C54] hover:bg-[#F25C54]/90 px-4 py-2 text-sm font-extrabold text-white transition-colors"
+            className="inline-flex items-center rounded-xl bg-[#F25C54] hover:bg-[#F25C54]/90 px-3 sm:px-4 py-2 text-xs sm:text-sm font-extrabold text-white transition-colors whitespace-nowrap"
           >
             {isSignedIn ? "Setup Hub" : "Launch Free Overlay"}
           </Link>
