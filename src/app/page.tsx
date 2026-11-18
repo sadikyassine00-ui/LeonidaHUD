@@ -129,8 +129,8 @@ export default async function HomePage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-16 sm:pt-14 sm:pb-20 space-y-10">
-          <div className="max-w-4xl space-y-5">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
+          <div className="min-h-[calc(100svh-15rem)] py-12 sm:py-16 flex flex-col items-center justify-center text-center max-w-4xl mx-auto space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full bg-[#131720] border border-white/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-[#F7B267]">
               <span className="w-2 h-2 rounded-full bg-[#F25C54]" />
               <span>Ready for the November 19, 2026 Console Launch</span>
@@ -141,14 +141,14 @@ export default async function HomePage() {
               HUDs Anyway.
             </h1>
 
-            <p className="text-base sm:text-lg text-[#8D96A5] max-w-2xl leading-relaxed">
+            <p className="text-base sm:text-lg text-[#8D96A5] max-w-2xl mx-auto leading-relaxed">
               Built for PS5 and Xbox capture card setups. Drop one Browser
               Source into OBS and control your Story %, Cash counter,
               Wasted/Busted tallies, and live chat polls straight from your
               phone or Stream Deck.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Link
                 href={userId ? "/dashboard" : "/signin"}
                 className="h-12 px-6 rounded-xl bg-[#F25C54] hover:bg-[#F25C54]/90 text-white font-extrabold text-sm inline-flex items-center gap-2 transition-colors"
@@ -166,8 +166,8 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Interactive Live Sandbox */}
-          <div id="live-sandbox" className="scroll-mt-20">
+          {/* Interactive Live Sandbox (peeks from bottom of initial viewport) */}
+          <div id="live-sandbox" className="scroll-mt-24">
             <LandingHeroSandbox />
           </div>
         </section>

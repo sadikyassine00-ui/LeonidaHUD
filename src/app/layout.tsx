@@ -5,6 +5,7 @@ import {
   Poppins,
   Inter,
 } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -73,6 +74,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#0B0D12] text-[#F4F5F7] font-sans selection:bg-[#F25C54]/30 selection:text-[#F4F5F7]">
         {children}
+        <Analytics />
       </body>
     </html>
   );
