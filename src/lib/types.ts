@@ -47,6 +47,8 @@ export interface OverlayStateSnapshot {
   showDeathWidget: boolean;
   showCashWidget: boolean;
   showPollWidget: boolean;
+  clipSafeMode?: boolean;
+  hookBanner?: string | null;
   stateVersion: number;
   updatedAt: string;
   activePoll: PollSnapshot | null;

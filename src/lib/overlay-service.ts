@@ -82,6 +82,8 @@ function createInitialDevStore(): DevStoreData {
         showDeathWidget: true,
         showCashWidget: true,
         showPollWidget: true,
+        clipSafeMode: false,
+        hookBanner: null,
         stateVersion: 1,
         updatedAt: now,
         activePoll: null,
@@ -167,6 +169,8 @@ function toOverlaySnapshot(
     showDeathWidget: overlay.showDeathWidget,
     showCashWidget: isPro ? overlay.showCashWidget : false,
     showPollWidget: isPro ? overlay.showPollWidget : false,
+    clipSafeMode: isPro ? Boolean(overlay.clipSafeMode) : false,
+    hookBanner: isPro ? (overlay.hookBanner ?? null) : null,
     stateVersion: overlay.stateVersion,
     updatedAt: overlay.updatedAt.toISOString(),
     activePoll: isPro ? toPollSnapshot(poll) : null,
@@ -194,6 +198,8 @@ export async function getOverlayByPublicKey(
       customMissions: isPro ? overlay.customMissions : [],
       showCashWidget: isPro ? overlay.showCashWidget : false,
       showPollWidget: isPro ? overlay.showPollWidget : false,
+      clipSafeMode: isPro ? Boolean(overlay.clipSafeMode) : false,
+      hookBanner: isPro ? (overlay.hookBanner ?? null) : null,
       activePoll: isPro ? overlay.activePoll : null,
     };
   }
@@ -304,6 +310,8 @@ export async function getOrCreateOverlayForUser(
         showDeathWidget: true,
         showCashWidget: true,
         showPollWidget: true,
+        clipSafeMode: false,
+        hookBanner: null,
         stateVersion: 1,
         updatedAt: new Date().toISOString(),
         activePoll: null,
@@ -320,6 +328,8 @@ export async function getOrCreateOverlayForUser(
       customMissions: isPro ? overlay.customMissions : [],
       showCashWidget: isPro ? overlay.showCashWidget : false,
       showPollWidget: isPro ? overlay.showPollWidget : false,
+      clipSafeMode: isPro ? Boolean(overlay.clipSafeMode) : false,
+      hookBanner: isPro ? (overlay.hookBanner ?? null) : null,
       activePoll: isPro ? overlay.activePoll : null,
     };
   }
@@ -401,6 +411,8 @@ export interface OverlayUpdatePatch {
   showDeathWidget?: boolean;
   showCashWidget?: boolean;
   showPollWidget?: boolean;
+  clipSafeMode?: boolean;
+  hookBanner?: string | null;
 }
 
 export async function updateOverlayForUser(
@@ -491,6 +503,18 @@ export async function updateOverlayForUser(
     patch.showPollWidget !== undefined
       ? patch.showPollWidget
       : current.showPollWidget;
+  const nextClipSafeMode =
+    current.plan === "pro"
+      ? patch.clipSafeMode !== undefined
+        ? patch.clipSafeMode
+        : Boolean(current.clipSafeMode)
+      : false;
+  const nextHookBanner =
+    current.plan === "pro"
+      ? patch.hookBanner !== undefined
+        ? patch.hookBanner
+        : (current.hookBanner ?? null)
+      : null;
 
   if (!hasDatabaseConfig()) {
     const store = readDevStore();
@@ -510,6 +534,8 @@ export async function updateOverlayForUser(
       showDeathWidget: nextShowDeath,
       showCashWidget: nextShowCash,
       showPollWidget: nextShowPoll,
+      clipSafeMode: nextClipSafeMode,
+      hookBanner: nextHookBanner,
       stateVersion: current.stateVersion + 1,
       updatedAt: new Date().toISOString(),
     };
@@ -536,6 +562,8 @@ export async function updateOverlayForUser(
       showDeathWidget: nextShowDeath,
       showCashWidget: nextShowCash,
       showPollWidget: nextShowPoll,
+      clipSafeMode: nextClipSafeMode,
+      hookBanner: nextHookBanner,
       stateVersion: sql`${schema.overlays.stateVersion} + 1`,
       updatedAt: new Date(),
     })

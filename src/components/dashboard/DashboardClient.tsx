@@ -13,6 +13,7 @@ import {
   Palette,
   RefreshCw,
   Smartphone,
+  SmartphoneNfc,
   Tv,
   Webhook,
 } from "lucide-react";
@@ -49,6 +50,10 @@ export function DashboardClient({
   const [kickChannel, setKickChannel] = useState(
     initialOverlay.kickChannel ?? ""
   );
+  const [hookBanner, setHookBanner] = useState(
+    initialOverlay.hookBanner ?? ""
+  );
+  const [savingHook, setSavingHook] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [savingChannels, setSavingChannels] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -494,6 +499,75 @@ export function DashboardClient({
                   );
                 })}
               </div>
+            </section>
+
+            {/* 9:16 Clip-Safe Mode + Top Hook Banner */}
+            <section className="broadcast-card rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <SmartphoneNfc className="w-4 h-4 text-[#2EC4B6]" />
+                  <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+                    9:16 Clip-Safe Mode
+                  </h2>
+                </div>
+                {user.plan !== "pro" ? (
+                  <span className="text-[10px] font-extrabold px-2 py-1 rounded bg-[#F7B267]/15 text-[#F7B267]">
+                    PRO
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextVal = !overlay.clipSafeMode;
+                      setOverlay((prev) => ({
+                        ...prev,
+                        clipSafeMode: nextVal,
+                      }));
+                      void updateOverlay({ clipSafeMode: nextVal });
+                    }}
+                    className={`h-8 px-3 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                      overlay.clipSafeMode
+                        ? "bg-[#2EC4B6] text-[#0B0D12]"
+                        : "bg-[#0B0D12] border border-white/15 text-[#8D96A5]"
+                    }`}
+                  >
+                    {overlay.clipSafeMode ? "9:16 ON" : "16:9 WIDE"}
+                  </button>
+                )}
+              </div>
+
+              <p className="text-xs text-[#8D96A5]">
+                Center all HUD widgets inside a vertical 9:16 safe window for
+                TikTok, Reels, and Whop clips, with an optional Top Hook Banner.
+              </p>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (user.plan !== "pro") return;
+                  setSavingHook(true);
+                  await updateOverlay({ hookBanner: hookBanner.trim() || null });
+                  setSavingHook(false);
+                }}
+                className="flex flex-col sm:flex-row gap-2"
+              >
+                <input
+                  type="text"
+                  maxLength={80}
+                  disabled={user.plan !== "pro"}
+                  value={hookBanner}
+                  onChange={(e) => setHookBanner(e.target.value)}
+                  placeholder="Top Hook Banner (e.g. WAIT FOR THE ENDING)"
+                  className="flex-1 h-10 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-xs text-[#F4F5F7] placeholder:text-[#8D96A5] disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={user.plan !== "pro" || savingHook}
+                  className="h-10 px-4 rounded-xl bg-[#2EC4B6] text-[#0B0D12] font-bold text-xs shrink-0 disabled:opacity-45 cursor-pointer"
+                >
+                  {savingHook ? "Saving..." : "Save Banner"}
+                </button>
+              </form>
             </section>
 
             {/* Theme Selector */}

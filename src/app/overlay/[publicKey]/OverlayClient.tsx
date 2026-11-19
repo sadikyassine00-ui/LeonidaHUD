@@ -6,9 +6,13 @@ import type { OverlayStateSnapshot } from "@/lib/types";
 
 interface OverlayClientProps {
   initialState: OverlayStateSnapshot;
+  forceClipSafe?: boolean;
 }
 
-export function OverlayClient({ initialState }: OverlayClientProps) {
+export function OverlayClient({
+  initialState,
+  forceClipSafe = false,
+}: OverlayClientProps) {
   const [state, setState] = useState<OverlayStateSnapshot>(initialState);
   const versionRef = useRef<number>(initialState.stateVersion);
 
@@ -85,5 +89,11 @@ export function OverlayClient({ initialState }: OverlayClientProps) {
     };
   }, [initialState.publicKey]);
 
-  return <OverlayHudCanvas state={state} mode="obs" />;
+  return (
+    <OverlayHudCanvas
+      state={state}
+      mode="obs"
+      forceClipSafe={forceClipSafe}
+    />
+  );
 }

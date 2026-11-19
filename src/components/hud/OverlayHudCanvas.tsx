@@ -7,6 +7,7 @@ import type { HudTheme, OverlayStateSnapshot } from "@/lib/types";
 interface OverlayHudCanvasProps {
   state: OverlayStateSnapshot;
   mode?: "obs" | "preview";
+  forceClipSafe?: boolean;
 }
 
 interface ThemeTokens {
@@ -66,12 +67,13 @@ function getThemeTokens(theme: HudTheme): ThemeTokens {
   }
 }
 
-function SkullIcon({ className }: { className?: string }) {
+function SkullIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       className={className}
+      style={style}
       aria-hidden="true"
     >
       <path
@@ -93,12 +95,13 @@ function SkullIcon({ className }: { className?: string }) {
   );
 }
 
-function HandcuffIcon({ className }: { className?: string }) {
+function HandcuffIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       className={className}
+      style={style}
       aria-hidden="true"
     >
       <circle
@@ -151,6 +154,7 @@ function formatCountdown(endsAt: string | null, nowMs: number): string {
 export function OverlayHudCanvas({
   state,
   mode = "obs",
+  forceClipSafe = false,
 }: OverlayHudCanvasProps) {
   const tokens = getThemeTokens(state.theme);
   const isObs = mode === "obs";
@@ -163,6 +167,20 @@ export function OverlayHudCanvas({
   const [wastedPulse, setWastedPulse] = useState(false);
   const [bustedPulse, setBustedPulse] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [viewport, setViewport] = useState({ width: 1920, height: 1080 });
+
+  useEffect(() => {
+    if (!isObs || typeof window === "undefined") return;
+    const syncSize = () => {
+      setViewport({
+        width: window.innerWidth || 1920,
+        height: window.innerHeight || 1080,
+      });
+    };
+    syncSize();
+    window.addEventListener("resize", syncSize);
+    return () => window.removeEventListener("resize", syncSize);
+  }, [isObs]);
 
   useEffect(() => {
     if (state.cashBalance !== prevCashRef.current) {
@@ -204,6 +222,33 @@ export function OverlayHudCanvas({
     };
   }, [state.activePoll?.isActive, state.activePoll?.id]);
 
+  const isPortrait = isObs && viewport.height > viewport.width;
+  const isClipSafe = Boolean(
+    forceClipSafe || (state.plan === "pro" && state.clipSafeMode) || isPortrait
+  );
+
+  const hudScale = isObs
+    ? isClipSafe
+      ? Math.min(
+          1.15,
+          Math.max(
+            0.58,
+            isPortrait
+              ? Math.min(viewport.width / 1080, viewport.height / 1920)
+              : Math.min(viewport.height / 1080, 1)
+          )
+        )
+      : Math.min(
+          1.35,
+          Math.max(
+            0.55,
+            Math.min(viewport.width / 1920, viewport.height / 1080)
+          )
+        )
+    : isClipSafe
+      ? 0.56
+      : 0.74;
+
   const totalSegments = 12;
   const filledSegments = Math.round(
     (Math.min(100, Math.max(0, state.storyPercent)) / 100) * totalSegments
@@ -216,362 +261,440 @@ export function OverlayHudCanvas({
     totalVotes > 0 ? Math.round(((poll?.votesA ?? 0) / totalVotes) * 100) : 50;
   const pctB = totalVotes > 0 ? 100 - pctA : 50;
 
+  const hookBannerCard =
+    isClipSafe && state.plan === "pro" && state.hookBanner ? (
+      <div
+        className={`w-full rounded-xl text-center ${tokens.plate}`}
+        style={{
+          padding:
+            "calc(8px * var(--hud-scale)) calc(16px * var(--hud-scale))",
+        }}
+      >
+        <div
+          className={`font-hud font-extrabold uppercase tracking-wider truncate ${tokens.chapterText}`}
+          style={{ fontSize: "calc(18px * var(--hud-scale))" }}
+        >
+          {state.hookBanner}
+        </div>
+      </div>
+    ) : null;
+
+  const storyCard = (
+    <AnimatePresence>
+      {state.showStoryWidget && (
+        <motion.div
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -24 }}
+          transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          className={`rounded-xl ${
+            isClipSafe ? "w-full" : "w-full max-w-[calc(420px*var(--hud-scale))]"
+          } ${tokens.plate}`}
+          style={{
+            padding:
+              "calc(14px * var(--hud-scale)) calc(18px * var(--hud-scale))",
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span
+                className={`rounded-full shrink-0 ${tokens.accentBar}`}
+                style={{
+                  width: "calc(4px * var(--hud-scale))",
+                  height: "calc(34px * var(--hud-scale))",
+                }}
+              />
+              <div className="min-w-0">
+                <div
+                  className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
+                  style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+                >
+                  STORY PROGRESS
+                </div>
+                <div
+                  className={`font-semibold truncate ${tokens.chapterText}`}
+                  style={{ fontSize: "calc(16px * var(--hud-scale))" }}
+                >
+                  {state.storyChapter}
+                </div>
+              </div>
+            </div>
+            <div
+              className={`font-hud font-extrabold leading-none shrink-0 ${tokens.valueText}`}
+              style={{ fontSize: "calc(34px * var(--hud-scale))" }}
+            >
+              {state.storyPercent}%
+            </div>
+          </div>
+
+          <div
+            className="grid grid-cols-12 gap-1"
+            style={{ marginTop: "calc(10px * var(--hud-scale))" }}
+          >
+            {Array.from({ length: totalSegments }).map((_, idx) => {
+              const active = idx < filledSegments;
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-sm overflow-hidden ${tokens.segmentTrack}`}
+                  style={{ height: "calc(7px * var(--hud-scale))" }}
+                >
+                  {active && (
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ duration: 0.25, delay: idx * 0.02 }}
+                      style={{ transformOrigin: "left" }}
+                      className={`w-full h-full ${tokens.segmentActive}`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const cashCard = (
+    <AnimatePresence>
+      {state.showCashWidget && (
+        <motion.div
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 24 }}
+          transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          className={`rounded-xl shrink-0 ${
+            isClipSafe ? "w-full flex items-center justify-between" : "text-right"
+          } ${tokens.plate}`}
+          style={{
+            padding:
+              "calc(12px * var(--hud-scale)) calc(20px * var(--hud-scale))",
+          }}
+        >
+          <div
+            className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
+            style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+          >
+            NET WORTH
+          </div>
+          <div className="relative overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={state.cashBalance}
+                initial={{
+                  y: cashFlash === "down" ? -16 : 16,
+                  opacity: 0,
+                }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{
+                  y: cashFlash === "down" ? 16 : -16,
+                  opacity: 0,
+                }}
+                transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                className={`font-hud font-extrabold leading-none tracking-tight transition-colors duration-300 ${
+                  cashFlash === "down" ? "text-[#F25C54]" : "text-[#2EC4B6]"
+                }`}
+                style={{ fontSize: "calc(42px * var(--hud-scale))" }}
+              >
+                {formatCash(state.cashBalance)}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const deathCard = (
+    <AnimatePresence>
+      {state.showDeathWidget && (
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 24 }}
+          transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          className={`flex items-center rounded-xl shrink-0 ${
+            isClipSafe ? "w-full justify-around" : ""
+          } ${tokens.plate}`}
+          style={{
+            gap: "calc(20px * var(--hud-scale))",
+            padding:
+              "calc(14px * var(--hud-scale)) calc(20px * var(--hud-scale))",
+          }}
+        >
+          <motion.div
+            animate={
+              wastedPulse
+                ? { scale: [1, 1.14, 1], color: "#F25C54" }
+                : { scale: 1 }
+            }
+            transition={{ duration: 0.45 }}
+            className="flex items-center gap-2.5"
+          >
+            <div
+              className="flex items-center justify-center rounded-lg border border-[#F25C54]/30 bg-[#F25C54]/12 text-[#F25C54]"
+              style={{
+                width: "calc(42px * var(--hud-scale))",
+                height: "calc(42px * var(--hud-scale))",
+              }}
+            >
+              <SkullIcon
+                style={{
+                  width: "calc(22px * var(--hud-scale))",
+                  height: "calc(22px * var(--hud-scale))",
+                }}
+              />
+            </div>
+            <div>
+              <div
+                className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
+                style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+              >
+                WASTED
+              </div>
+              <div
+                className={`font-hud font-extrabold leading-none transition-colors ${
+                  wastedPulse ? "text-[#F25C54]" : tokens.valueText
+                }`}
+                style={{ fontSize: "calc(32px * var(--hud-scale))" }}
+              >
+                {state.wastedCount}
+              </div>
+            </div>
+          </motion.div>
+
+          <div
+            className="w-px bg-white/10"
+            style={{ height: "calc(32px * var(--hud-scale))" }}
+          />
+
+          <motion.div
+            animate={
+              bustedPulse
+                ? { scale: [1, 1.14, 1], color: "#F25C54" }
+                : { scale: 1 }
+            }
+            transition={{ duration: 0.45 }}
+            className="flex items-center gap-2.5"
+          >
+            <div
+              className="flex items-center justify-center rounded-lg border border-[#F7B267]/30 bg-[#F7B267]/12 text-[#F7B267]"
+              style={{
+                width: "calc(42px * var(--hud-scale))",
+                height: "calc(42px * var(--hud-scale))",
+              }}
+            >
+              <HandcuffIcon
+                style={{
+                  width: "calc(22px * var(--hud-scale))",
+                  height: "calc(22px * var(--hud-scale))",
+                }}
+              />
+            </div>
+            <div>
+              <div
+                className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
+                style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+              >
+                BUSTED
+              </div>
+              <div
+                className={`font-hud font-extrabold leading-none transition-colors ${
+                  bustedPulse ? "text-[#F25C54]" : tokens.valueText
+                }`}
+                style={{ fontSize: "calc(32px * var(--hud-scale))" }}
+              >
+                {state.bustedCount}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const pollCard = (
+    <AnimatePresence>
+      {pollActive && poll && (
+        <motion.div
+          key={poll.id}
+          initial={{ opacity: 0, x: 40, scale: 0.96 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 40, scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          className={`rounded-xl ${
+            isClipSafe ? "w-full" : "w-full max-w-[calc(410px*var(--hud-scale))]"
+          } ${tokens.plate}`}
+          style={{
+            padding:
+              "calc(14px * var(--hud-scale)) calc(18px * var(--hud-scale))",
+          }}
+        >
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#F25C54] animate-pulse shrink-0" />
+              <span
+                className={`font-hud font-extrabold uppercase tracking-wide truncate ${tokens.valueText}`}
+                style={{ fontSize: "calc(21px * var(--hud-scale))" }}
+              >
+                {poll.question}
+              </span>
+            </div>
+            <span
+              className="font-hud font-bold px-2 py-0.5 rounded bg-white/8 text-[#F7B267] shrink-0"
+              style={{ fontSize: "calc(15px * var(--hud-scale))" }}
+            >
+              {formatCountdown(poll.endsAt, nowMs)}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1 gap-2">
+                <span
+                  className="font-semibold truncate text-[#F4F5F7]"
+                  style={{ fontSize: "calc(14px * var(--hud-scale))" }}
+                >
+                  <span className="font-hud font-extrabold text-[#F25C54] mr-1.5">
+                    !A
+                  </span>
+                  {poll.optionA}
+                </span>
+                <span
+                  className="font-hud font-bold shrink-0 text-[#F4F5F7]"
+                  style={{ fontSize: "calc(16px * var(--hud-scale))" }}
+                >
+                  {pctA}%
+                </span>
+              </div>
+              <div
+                className="w-full rounded-full bg-white/10 overflow-hidden"
+                style={{ height: "calc(9px * var(--hud-scale))" }}
+              >
+                <motion.div
+                  animate={{ width: `${pctA}%` }}
+                  transition={{ type: "spring", stiffness: 220, damping: 24 }}
+                  className={`h-full rounded-full ${tokens.pollBarA}`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1 gap-2">
+                <span
+                  className="font-semibold truncate text-[#F4F5F7]"
+                  style={{ fontSize: "calc(14px * var(--hud-scale))" }}
+                >
+                  <span className="font-hud font-extrabold text-[#F7B267] mr-1.5">
+                    !B
+                  </span>
+                  {poll.optionB}
+                </span>
+                <span
+                  className="font-hud font-bold shrink-0 text-[#F4F5F7]"
+                  style={{ fontSize: "calc(16px * var(--hud-scale))" }}
+                >
+                  {pctB}%
+                </span>
+              </div>
+              <div
+                className="w-full rounded-full bg-white/10 overflow-hidden"
+                style={{ height: "calc(9px * var(--hud-scale))" }}
+              >
+                <motion.div
+                  animate={{ width: `${pctB}%` }}
+                  transition={{ type: "spring", stiffness: 220, damping: 24 }}
+                  className={`h-full rounded-full ${tokens.pollBarB}`}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`flex items-center justify-between mt-2 pt-1.5 border-t border-white/8 ${tokens.labelText}`}
+            style={{ fontSize: "calc(12px * var(--hud-scale))" }}
+          >
+            <span>Type !A or !B in chat</span>
+            <span className="font-hud font-bold text-[#F4F5F7]">
+              {totalVotes.toLocaleString("en-US")} VOTES
+            </span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const watermarkBadge =
+    state.plan === "free" ? (
+      <div
+        className="rounded-full bg-[#0B0D12]/82 border border-white/12 font-hud font-bold tracking-[0.18em] text-[#F7B267] shrink-0"
+        style={{
+          padding:
+            "calc(4px * var(--hud-scale)) calc(14px * var(--hud-scale))",
+          fontSize: "calc(12px * var(--hud-scale))",
+        }}
+      >
+        LEONIDAHUD.COM
+      </div>
+    ) : null;
+
   return (
     <div
       data-obs-overlay={isObs ? "true" : undefined}
+      style={{ "--hud-scale": hudScale } as React.CSSProperties}
       className={
         isObs
-          ? "relative w-[1920px] h-[1080px] overflow-hidden bg-transparent select-none pointer-events-none"
+          ? "fixed inset-0 w-screen h-screen overflow-hidden bg-transparent pointer-events-none select-none"
           : "relative w-full h-full overflow-hidden select-none"
       }
     >
-      {/* TOP-LEFT: STORY & CHAPTER PROGRESS HUD */}
-      <AnimatePresence>
-        {state.showStoryWidget && (
-          <motion.div
-            initial={{ opacity: 0, x: -24 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -24 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
-            className={
-              isObs
-                ? `absolute top-9 left-10 w-[390px] rounded-xl px-5 py-4 ${tokens.plate}`
-                : `absolute top-5 left-5 w-[320px] rounded-xl px-4 py-3 ${tokens.plate}`
-            }
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className={`w-1 rounded-full shrink-0 ${
-                    isObs ? "h-9" : "h-7"
-                  } ${tokens.accentBar}`}
-                />
-                <div className="min-w-0">
-                  <div
-                    className={`uppercase tracking-[0.14em] font-bold ${
-                      isObs ? "text-[11px]" : "text-[9px] sm:text-[10px]"
-                    } ${tokens.labelText}`}
-                  >
-                    STORY PROGRESS
-                  </div>
-                  <div
-                    className={`font-semibold truncate ${
-                      isObs ? "text-[16px]" : "text-[11px] sm:text-[13px]"
-                    } ${tokens.chapterText}`}
-                  >
-                    {state.storyChapter}
-                  </div>
-                </div>
-              </div>
-              <div
-                className={`font-hud font-extrabold leading-none shrink-0 ${
-                  isObs ? "text-[34px]" : "text-[22px] sm:text-[26px]"
-                } ${tokens.valueText}`}
-              >
-                {state.storyPercent}%
-              </div>
-            </div>
-
-            <div
-              className={`grid grid-cols-12 gap-1 ${isObs ? "mt-3" : "mt-2"}`}
-            >
-              {Array.from({ length: totalSegments }).map((_, idx) => {
-                const active = idx < filledSegments;
-                return (
-                  <div
-                    key={idx}
-                    className={`rounded-sm overflow-hidden ${
-                      isObs ? "h-2" : "h-1.5"
-                    } ${tokens.segmentTrack}`}
-                  >
-                    {active && (
-                      <motion.div
-                        initial={{ scaleX: 0 }}
-                        animate={{ scaleX: 1 }}
-                        transition={{ duration: 0.25, delay: idx * 0.02 }}
-                        style={{ transformOrigin: "left" }}
-                        className={`w-full h-full ${tokens.segmentActive}`}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* TOP-RIGHT: LIVE CASH / NET WORTH TICKER */}
-      <AnimatePresence>
-        {state.showCashWidget && (
-          <motion.div
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 24 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
-            className={
-              isObs
-                ? `absolute top-9 right-10 rounded-xl px-6 py-3.5 text-right ${tokens.plate}`
-                : `absolute top-5 right-5 rounded-xl px-4 py-3 text-right ${tokens.plate}`
-            }
-          >
-            <div
-              className={`uppercase tracking-[0.14em] font-bold ${
-                isObs ? "text-[11px]" : "text-[9px] sm:text-[10px]"
-              } ${tokens.labelText}`}
-            >
-              NET WORTH
-            </div>
-            <div className="relative overflow-hidden">
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.div
-                  key={state.cashBalance}
-                  initial={{
-                    y: cashFlash === "down" ? -16 : 16,
-                    opacity: 0,
-                  }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{
-                    y: cashFlash === "down" ? 16 : -16,
-                    opacity: 0,
-                  }}
-                  transition={{ type: "spring", stiffness: 320, damping: 26 }}
-                  className={`font-hud font-extrabold leading-none tracking-tight transition-colors duration-300 ${
-                    isObs ? "text-[46px]" : "text-[34px]"
-                  } ${
-                    cashFlash === "down"
-                      ? "text-[#F25C54]"
-                      : cashFlash === "up"
-                      ? "text-[#2EC4B6]"
-                      : "text-[#2EC4B6]"
-                  }`}
-                >
-                  {formatCash(state.cashBalance)}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* BOTTOM-LEFT: WASTED & BUSTED COUNTER */}
-      <AnimatePresence>
-        {state.showDeathWidget && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
-            className={
-              isObs
-                ? `absolute bottom-9 left-10 flex items-center gap-6 rounded-xl px-6 py-4 ${tokens.plate}`
-                : `absolute bottom-5 left-5 flex items-center gap-5 rounded-xl px-4 py-3 ${tokens.plate}`
-            }
-          >
-            <motion.div
-              animate={
-                wastedPulse
-                  ? { scale: [1, 1.14, 1], color: "#F25C54" }
-                  : { scale: 1 }
-              }
-              transition={{ duration: 0.45 }}
-              className="flex items-center gap-2.5"
-            >
-              <div
-                className={`flex items-center justify-center rounded-lg border border-[#F25C54]/30 bg-[#F25C54]/12 text-[#F25C54] ${
-                  isObs ? "w-11 h-11" : "w-8 h-8 sm:w-9 sm:h-9"
-                }`}
-              >
-                <SkullIcon className={isObs ? "w-6 h-6" : "w-4 h-4 sm:w-5 sm:h-5"} />
-              </div>
-              <div>
-                <div
-                  className={`uppercase tracking-[0.14em] font-bold ${
-                    isObs ? "text-[11px]" : "text-[9px] sm:text-[10px]"
-                  } ${tokens.labelText}`}
-                >
-                  WASTED
-                </div>
-                <div
-                  className={`font-hud font-extrabold leading-none transition-colors ${
-                    isObs ? "text-[34px]" : "text-[22px] sm:text-[26px]"
-                  } ${wastedPulse ? "text-[#F25C54]" : tokens.valueText}`}
-                >
-                  {state.wastedCount}
-                </div>
-              </div>
-            </motion.div>
-
-            <div className="w-px h-8 bg-white/10" />
-
-            <motion.div
-              animate={
-                bustedPulse
-                  ? { scale: [1, 1.14, 1], color: "#F25C54" }
-                  : { scale: 1 }
-              }
-              transition={{ duration: 0.45 }}
-              className="flex items-center gap-2.5"
-            >
-              <div
-                className={`flex items-center justify-center rounded-lg border border-[#F7B267]/30 bg-[#F7B267]/12 text-[#F7B267] ${
-                  isObs ? "w-11 h-11" : "w-8 h-8 sm:w-9 sm:h-9"
-                }`}
-              >
-                <HandcuffIcon
-                  className={isObs ? "w-6 h-6" : "w-4 h-4 sm:w-5 sm:h-5"}
-                />
-              </div>
-              <div>
-                <div
-                  className={`uppercase tracking-[0.14em] font-bold ${
-                    isObs ? "text-[11px]" : "text-[9px] sm:text-[10px]"
-                  } ${tokens.labelText}`}
-                >
-                  BUSTED
-                </div>
-                <div
-                  className={`font-hud font-extrabold leading-none transition-colors ${
-                    isObs ? "text-[34px]" : "text-[22px] sm:text-[26px]"
-                  } ${bustedPulse ? "text-[#F25C54]" : tokens.valueText}`}
-                >
-                  {state.bustedCount}
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* BOTTOM-RIGHT: LIVE VIEWER CHAT POLL CARD */}
-      <AnimatePresence>
-        {pollActive && poll && (
-          <motion.div
-            key={poll.id}
-            initial={{ opacity: 0, x: 40, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 40, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
-            className={
-              isObs
-                ? `absolute bottom-9 right-10 w-[410px] rounded-xl px-5 py-4 ${tokens.plate}`
-                : `absolute bottom-5 right-5 w-[290px] rounded-xl px-4 py-3.5 ${tokens.plate}`
-            }
-          >
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="inline-block w-2 h-2 rounded-full bg-[#F25C54] animate-pulse shrink-0" />
-                <span
-                  className={`font-hud font-extrabold uppercase tracking-wide truncate ${
-                    isObs ? "text-[22px]" : "text-[14px] sm:text-[18px]"
-                  } ${tokens.valueText}`}
-                >
-                  {poll.question}
-                </span>
-              </div>
-              <span
-                className={`font-hud font-bold px-2 py-0.5 rounded bg-white/8 text-[#F7B267] shrink-0 ${
-                  isObs ? "text-[16px]" : "text-[12px] sm:text-[14px]"
-                }`}
-              >
-                {formatCountdown(poll.endsAt, nowMs)}
-              </span>
-            </div>
-
-            <div className={isObs ? "space-y-2.5" : "space-y-1.5 sm:space-y-2"}>
-              {/* Option A */}
-              <div>
-                <div className="flex items-center justify-between text-xs mb-1 gap-2">
-                  <span
-                    className={`font-semibold truncate ${
-                      isObs ? "text-[14px]" : "text-[10px] sm:text-[12px]"
-                    } text-[#F4F5F7]`}
-                  >
-                    <span className="font-hud font-extrabold text-[#F25C54] mr-1.5">
-                      !A
-                    </span>
-                    {poll.optionA}
-                  </span>
-                  <span
-                    className={`font-hud font-bold shrink-0 ${
-                      isObs ? "text-[16px]" : "text-[11px] sm:text-[13px]"
-                    } text-[#F4F5F7]`}
-                  >
-                    {pctA}%
-                  </span>
-                </div>
-                <div
-                  className={`w-full rounded-full bg-white/10 overflow-hidden ${
-                    isObs ? "h-2.5" : "h-1.5 sm:h-2"
-                  }`}
-                >
-                  <motion.div
-                    animate={{ width: `${pctA}%` }}
-                    transition={{ type: "spring", stiffness: 220, damping: 24 }}
-                    className={`h-full rounded-full ${tokens.pollBarA}`}
-                  />
-                </div>
-              </div>
-
-              {/* Option B */}
-              <div>
-                <div className="flex items-center justify-between text-xs mb-1 gap-2">
-                  <span
-                    className={`font-semibold truncate ${
-                      isObs ? "text-[14px]" : "text-[10px] sm:text-[12px]"
-                    } text-[#F4F5F7]`}
-                  >
-                    <span className="font-hud font-extrabold text-[#F7B267] mr-1.5">
-                      !B
-                    </span>
-                    {poll.optionB}
-                  </span>
-                  <span
-                    className={`font-hud font-bold shrink-0 ${
-                      isObs ? "text-[16px]" : "text-[11px] sm:text-[13px]"
-                    } text-[#F4F5F7]`}
-                  >
-                    {pctB}%
-                  </span>
-                </div>
-                <div
-                  className={`w-full rounded-full bg-white/10 overflow-hidden ${
-                    isObs ? "h-2.5" : "h-1.5 sm:h-2"
-                  }`}
-                >
-                  <motion.div
-                    animate={{ width: `${pctB}%` }}
-                    transition={{ type: "spring", stiffness: 220, damping: 24 }}
-                    className={`h-full rounded-full ${tokens.pollBarB}`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div
-              className={`flex items-center justify-between mt-2 pt-1.5 border-t border-white/8 ${
-                isObs ? "text-[12px]" : "text-[9px] sm:text-[11px]"
-              } ${tokens.labelText}`}
-            >
-              <span>Type !A or !B in chat</span>
-              <span className="font-hud font-bold text-[#F4F5F7]">
-                {totalVotes.toLocaleString("en-US")} VOTES
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* FREE PLAN WATERMARK BADGE (BOTTOM CORNER) */}
-      {state.plan === "free" && (
+      {isClipSafe ? (
         <div
           className={
             isObs
-              ? "absolute bottom-4 right-10 rounded-full bg-[#0B0D12]/82 border border-white/12 px-4 py-1 text-[12px] font-hud font-bold tracking-[0.18em] text-[#F7B267]"
-              : "absolute bottom-3 right-4 rounded-full bg-[#0B0D12]/82 border border-white/12 px-3 py-0.5 text-[10px] font-hud font-bold tracking-[0.18em] text-[#F7B267]"
+              ? "max-w-[min(92vw,56.25vh)] w-full mx-auto h-full flex flex-col justify-between py-[4vh] px-3"
+              : "max-w-[324px] w-full mx-auto h-full flex flex-col justify-between py-4 px-2"
           }
         >
-          LEONIDAHUD.COM
+          <div className="flex flex-col items-stretch gap-2.5">
+            {hookBannerCard}
+            {storyCard}
+            {cashCard}
+          </div>
+
+          <div className="flex flex-col items-stretch gap-2.5">
+            {pollCard}
+            {deathCard}
+            {watermarkBadge && (
+              <div className="flex justify-center">{watermarkBadge}</div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div
+          className="w-full h-full flex flex-col justify-between"
+          style={{
+            padding: isObs ? "clamp(12px, 2.5vw, 36px)" : "20px",
+          }}
+        >
+          {/* Top Row: Top-Left = Story Progress, Top-Right = Net Worth */}
+          <div className="flex justify-between items-start gap-4 w-full">
+            <div className="min-w-0 flex-1 flex justify-start">
+              {storyCard}
+            </div>
+            <div className="min-w-0 flex justify-end">{cashCard}</div>
+          </div>
+
+          {/* Bottom Row: Bottom-Left = Wasted/Busted + Watermark, Bottom-Right = Live Poll */}
+          <div className="flex justify-between items-end gap-4 w-full">
+            <div className="min-w-0 flex flex-col items-start gap-2">
+              {deathCard}
+              {watermarkBadge}
+            </div>
+            <div className="min-w-0 flex-1 flex justify-end">{pollCard}</div>
+          </div>
         </div>
       )}
     </div>

@@ -89,10 +89,15 @@ export async function ensureDatabaseSchema(): Promise<void> {
             show_death_widget boolean NOT NULL DEFAULT true,
             show_cash_widget boolean NOT NULL DEFAULT true,
             show_poll_widget boolean NOT NULL DEFAULT true,
+            clip_safe_mode boolean NOT NULL DEFAULT false,
+            hook_banner text,
             state_version integer NOT NULL DEFAULT 1,
             updated_at timestamp NOT NULL DEFAULT now()
           )
         `;
+
+        await client`ALTER TABLE overlays ADD COLUMN IF NOT EXISTS clip_safe_mode boolean NOT NULL DEFAULT false`;
+        await client`ALTER TABLE overlays ADD COLUMN IF NOT EXISTS hook_banner text`;
 
         await client`
           CREATE TABLE IF NOT EXISTS polls (

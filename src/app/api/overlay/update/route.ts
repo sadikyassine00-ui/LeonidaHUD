@@ -90,6 +90,14 @@ export async function POST(request: NextRequest) {
     patch.showCashWidget = body.showCashWidget;
   if (typeof body.showPollWidget === "boolean")
     patch.showPollWidget = body.showPollWidget;
+  if (typeof body.clipSafeMode === "boolean")
+    patch.clipSafeMode = body.clipSafeMode;
+  if (body.hookBanner !== undefined) {
+    patch.hookBanner =
+      typeof body.hookBanner === "string"
+        ? body.hookBanner.trim().slice(0, 80) || null
+        : null;
+  }
 
   const updated = await updateOverlayForUser(userId, patch);
   if (!updated) {

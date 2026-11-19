@@ -104,6 +104,8 @@ export const overlays = pgTable("overlays", {
   showDeathWidget: boolean("show_death_widget").default(true).notNull(),
   showCashWidget: boolean("show_cash_widget").default(true).notNull(),
   showPollWidget: boolean("show_poll_widget").default(true).notNull(),
+  clipSafeMode: boolean("clip_safe_mode").default(false).notNull(),
+  hookBanner: text("hook_banner"),
   stateVersion: integer("state_version").default(1).notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
