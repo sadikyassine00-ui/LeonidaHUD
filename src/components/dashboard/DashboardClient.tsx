@@ -178,10 +178,10 @@ export function DashboardClient({
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#F4F5F7] flex flex-col">
+    <div className="min-h-screen bg-[#0B0D12] text-[#F4F5F7] flex flex-col overflow-x-hidden">
       <TopNav activePath="/dashboard" isSignedIn />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full min-w-0 mx-auto px-3.5 sm:px-6 py-5 sm:py-8 space-y-5 sm:space-y-6">
         {!hasDatabase && (
           <div className="rounded-xl bg-[#F7B267]/12 border border-[#F7B267]/30 px-4 py-3 text-xs sm:text-sm text-[#F7B267]">
             Local development store active. Set DATABASE_URL in .env.local and
@@ -191,57 +191,59 @@ export function DashboardClient({
 
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="font-hud font-extrabold text-4xl uppercase tracking-wide">
+          <div className="min-w-0 space-y-1">
+            <h1 className="font-hud font-extrabold text-2xl sm:text-3xl lg:text-4xl uppercase tracking-wide leading-tight">
               BROADCASTER SETUP HUB
             </h1>
-            <p className="text-sm text-[#8D96A5]">
-              Signed in as {user.email} | Plan:{" "}
+            <p className="text-xs sm:text-sm text-[#8D96A5] break-words">
+              Signed in as{" "}
+              <span className="text-[#F4F5F7]/90 break-all">{user.email}</span>{" "}
+              | Plan:{" "}
               <span className="font-bold text-[#F4F5F7] uppercase">
                 {user.plan}
               </span>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 shrink-0">
             <Link
               href="/remote"
-              className="h-10 px-4 rounded-xl bg-[#2EC4B6] text-[#0B0D12] font-extrabold text-sm inline-flex items-center gap-2 hover:bg-[#2EC4B6]/90"
+              className="h-10 px-4 rounded-xl bg-[#2EC4B6] text-[#0B0D12] font-extrabold text-xs sm:text-sm inline-flex items-center justify-center gap-2 hover:bg-[#2EC4B6]/90"
             >
-              <Smartphone className="w-4 h-4" />
+              <Smartphone className="w-4 h-4 shrink-0" />
               <span>Launch Mobile Remote</span>
             </Link>
             <button
               type="button"
               onClick={() => void signOut({ callbackUrl: "/" })}
-              className="h-10 px-3.5 rounded-xl bg-[#131720] border border-white/10 text-[#8D96A5] hover:text-[#F4F5F7] text-sm font-semibold inline-flex items-center gap-1.5"
+              className="h-10 px-3.5 rounded-xl bg-[#131720] border border-white/10 text-[#8D96A5] hover:text-[#F4F5F7] text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4 shrink-0" />
               <span>Sign Out</span>
             </button>
           </div>
         </div>
 
         {statusMessage && (
-          <div className="rounded-xl bg-[#2EC4B6]/15 border border-[#2EC4B6]/35 px-4 py-2.5 text-sm font-semibold text-[#2EC4B6]">
+          <div className="rounded-xl bg-[#2EC4B6]/15 border border-[#2EC4B6]/35 px-4 py-2.5 text-xs sm:text-sm font-semibold text-[#2EC4B6]">
             {statusMessage}
           </div>
         )}
 
-        <div className="grid lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
           {/* Left Column: OBS URL, Stream Deck Webhooks, Channels */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 min-w-0 space-y-5 sm:space-y-6">
             {/* OBS Browser Source Card */}
-            <section className="broadcast-card rounded-2xl p-5 sm:p-6 space-y-4">
+            <section className="broadcast-card rounded-2xl p-4 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-[#F25C54]/15 border border-[#F25C54]/30 flex items-center justify-center text-[#F25C54]">
+                <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                  <div className="w-10 h-10 shrink-0 rounded-xl bg-[#F25C54]/15 border border-[#F25C54]/30 flex items-center justify-center text-[#F25C54]">
                     <Monitor className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+                  <div className="min-w-0">
+                    <h2 className="font-hud font-extrabold text-lg sm:text-2xl uppercase tracking-wide leading-snug">
                       OBS Browser Source URL
                     </h2>
-                    <p className="text-xs text-[#8D96A5]">
+                    <p className="text-xs sm:text-sm text-[#8D96A5] leading-relaxed">
                       Add as a 1920x1080 Browser Source in OBS Studio above your
                       console capture card.
                     </p>
@@ -250,7 +252,7 @@ export function DashboardClient({
                 <Link
                   href={`/overlay/${overlay.publicKey}`}
                   target="_blank"
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-[#0B0D12] border border-white/12 px-3 py-2 text-xs font-bold text-[#F4F5F7] hover:border-[#F25C54]/50"
+                  className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0B0D12] border border-white/12 px-3 py-2 text-xs font-bold text-[#F4F5F7] hover:border-[#F25C54]/50"
                 >
                   <ExternalLink className="w-3.5 h-3.5 text-[#F25C54]" />
                   <span>Open Overlay</span>
@@ -263,12 +265,12 @@ export function DashboardClient({
                   readOnly
                   value={obsUrl}
                   aria-label="OBS Browser Source URL"
-                  className="flex-1 h-11 rounded-xl bg-[#0B0D12] border border-white/10 px-3.5 text-sm font-medium text-[#F4F5F7] focus:outline-none"
+                  className="w-full min-w-0 flex-1 h-11 rounded-xl bg-[#0B0D12] border border-white/10 px-3.5 text-xs sm:text-sm font-medium text-[#F4F5F7] focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => void handleCopy("obs-url", obsUrl)}
-                  className="h-11 px-4 rounded-xl bg-[#F25C54] text-[#0B0D12] font-extrabold text-sm inline-flex items-center justify-center gap-2 shrink-0 hover:bg-[#F25C54]/90"
+                  className="w-full sm:w-auto h-11 px-4 rounded-xl bg-[#F25C54] text-[#0B0D12] font-extrabold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shrink-0 hover:bg-[#F25C54]/90 cursor-pointer"
                 >
                   {copiedId === "obs-url" ? (
                     <>
@@ -286,17 +288,17 @@ export function DashboardClient({
             </section>
 
             {/* Stream Deck & Macro Webhooks */}
-            <section className="broadcast-card rounded-2xl p-5 sm:p-6 space-y-4">
+            <section className="broadcast-card rounded-2xl p-4 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-[#F7B267]/15 border border-[#F7B267]/30 flex items-center justify-center text-[#F7B267]">
+                <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                  <div className="w-10 h-10 shrink-0 rounded-xl bg-[#F7B267]/15 border border-[#F7B267]/30 flex items-center justify-center text-[#F7B267]">
                     <Webhook className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+                  <div className="min-w-0">
+                    <h2 className="font-hud font-extrabold text-lg sm:text-2xl uppercase tracking-wide leading-snug">
                       Stream Deck &amp; Macro Triggers
                     </h2>
-                    <p className="text-xs text-[#8D96A5]">
+                    <p className="text-xs sm:text-sm text-[#8D96A5] leading-relaxed">
                       Paste these links into Elgato Stream Deck (System Website,
                       GET in background) or any macro pad.
                     </p>
@@ -306,7 +308,7 @@ export function DashboardClient({
                   type="button"
                   disabled={regenerating}
                   onClick={() => void handleRegenerateSecret()}
-                  className="shrink-0 h-9 px-3 rounded-xl bg-[#0B0D12] border border-white/12 hover:border-[#F7B267]/50 text-xs font-bold text-[#F7B267] inline-flex items-center gap-1.5"
+                  className="w-full sm:w-auto shrink-0 h-9 px-3 rounded-xl bg-[#0B0D12] border border-white/12 hover:border-[#F7B267]/50 text-xs font-bold text-[#F7B267] inline-flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <RefreshCw
                     className={`w-3.5 h-3.5 ${regenerating ? "animate-spin" : ""}`}
@@ -319,10 +321,10 @@ export function DashboardClient({
                 {webhookUrls.map((hook) => (
                   <div
                     key={hook.id}
-                    className="rounded-xl bg-[#0B0D12] border border-white/8 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                    className="rounded-xl bg-[#0B0D12] border border-white/8 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0"
                   >
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-[#F7B267]">
+                      <div className="text-xs sm:text-sm font-bold text-[#F7B267]">
                         {hook.label}
                       </div>
                       <div className="text-xs text-[#8D96A5] truncate">
@@ -332,7 +334,7 @@ export function DashboardClient({
                     <button
                       type="button"
                       onClick={() => void handleCopy(hook.id, hook.url)}
-                      className="shrink-0 h-8 px-3 rounded-lg bg-[#131720] border border-white/12 hover:border-white/30 text-xs font-bold text-[#F4F5F7] inline-flex items-center gap-1.5"
+                      className="w-full sm:w-auto shrink-0 h-9 sm:h-8 px-3 rounded-lg bg-[#131720] border border-white/12 hover:border-white/30 text-xs font-bold text-[#F4F5F7] inline-flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       {copiedId === hook.id ? (
                         <>
@@ -352,24 +354,24 @@ export function DashboardClient({
             </section>
 
             {/* Twitch & Kick Chat Channels */}
-            <section className="broadcast-card rounded-2xl p-5 sm:p-6 space-y-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-[#2EC4B6]/15 border border-[#2EC4B6]/30 flex items-center justify-center text-[#2EC4B6]">
+            <section className="broadcast-card rounded-2xl p-4 sm:p-6 space-y-4">
+              <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-[#2EC4B6]/15 border border-[#2EC4B6]/30 flex items-center justify-center text-[#2EC4B6]">
                   <Tv className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+                <div className="min-w-0">
+                  <h2 className="font-hud font-extrabold text-lg sm:text-2xl uppercase tracking-wide leading-snug">
                     Live Chat Poll Channels
                   </h2>
-                  <p className="text-xs text-[#8D96A5]">
+                  <p className="text-xs sm:text-sm text-[#8D96A5] leading-relaxed">
                     Reads !A, !B, 1, or 2 votes while your Mobile Remote or OBS
                     Dock is open.
                   </p>
                 </div>
               </div>
 
-              <form onSubmit={handleSaveChannels} className="grid sm:grid-cols-2 gap-3">
-                <div>
+              <form onSubmit={handleSaveChannels} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="min-w-0">
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8D96A5] mb-1.5">
                     Twitch Channel Username
                   </label>
@@ -378,10 +380,10 @@ export function DashboardClient({
                     value={twitchChannel}
                     onChange={(e) => setTwitchChannel(e.target.value)}
                     placeholder="e.g. vicebroadcaster"
-                    className="w-full h-11 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-sm text-[#F4F5F7] placeholder:text-[#8D96A5]"
+                    className="w-full min-w-0 h-11 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-sm text-[#F4F5F7] placeholder:text-[#8D96A5]"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8D96A5] mb-1.5">
                     Kick Channel or Chatroom ID
                   </label>
@@ -390,14 +392,14 @@ export function DashboardClient({
                     value={kickChannel}
                     onChange={(e) => setKickChannel(e.target.value)}
                     placeholder="e.g. channel slug or 668"
-                    className="w-full h-11 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-sm text-[#F4F5F7] placeholder:text-[#8D96A5]"
+                    className="w-full min-w-0 h-11 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-sm text-[#F4F5F7] placeholder:text-[#8D96A5]"
                   />
                 </div>
                 <div className="sm:col-span-2 flex justify-end">
                   <button
                     type="submit"
                     disabled={savingChannels}
-                    className="h-10 px-5 rounded-xl bg-[#2EC4B6] text-[#0B0D12] font-extrabold text-sm hover:bg-[#2EC4B6]/90"
+                    className="w-full sm:w-auto h-10 px-5 rounded-xl bg-[#2EC4B6] text-[#0B0D12] font-extrabold text-xs sm:text-sm hover:bg-[#2EC4B6]/90 cursor-pointer"
                   >
                     {savingChannels ? "Saving..." : "Save Chat Channels"}
                   </button>
@@ -407,10 +409,10 @@ export function DashboardClient({
           </div>
 
           {/* Right Column: Live Preview, Widget Toggles, Theme Selector, Billing */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 min-w-0 space-y-5 sm:space-y-6">
             {/* Live Preview */}
             <section className="broadcast-card rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#8D96A5]">
                   Live HUD Preview
                 </span>
@@ -418,17 +420,17 @@ export function DashboardClient({
                   Theme: {overlay.theme}
                 </span>
               </div>
-              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#191E2B] via-[#131720] to-[#0B0D12] border border-white/10">
+              <div className="w-full rounded-xl overflow-hidden bg-gradient-to-br from-[#191E2B] via-[#131720] to-[#0B0D12] border border-white/10">
                 <ScaledHudPreview state={overlay} />
               </div>
             </section>
 
             {/* Modular Widget Toggles */}
-            <section className="broadcast-card rounded-2xl p-5 space-y-3">
-              <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+            <section className="broadcast-card rounded-2xl p-4 sm:p-5 space-y-3">
+              <h2 className="font-hud font-extrabold text-lg sm:text-2xl uppercase tracking-wide leading-snug">
                 Active Corner Widgets
               </h2>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2.5">
                 {[
                   {
                     key: "showStoryWidget" as const,
@@ -468,20 +470,20 @@ export function DashboardClient({
                         setOverlay((prev) => ({ ...prev, [item.key]: nextVal }));
                         void updateOverlay({ [item.key]: nextVal });
                       }}
-                      className={`rounded-xl p-3 text-left border transition-all ${
+                      className={`rounded-xl p-3 text-left border transition-all min-w-0 ${
                         locked
                           ? "bg-[#0B0D12] border-white/8 opacity-55 cursor-not-allowed"
                           : enabled
-                            ? "bg-[#2EC4B6]/10 border-[#2EC4B6]/40"
-                            : "bg-[#0B0D12] border-white/8 opacity-65"
+                            ? "bg-[#2EC4B6]/10 border-[#2EC4B6]/40 cursor-pointer"
+                            : "bg-[#0B0D12] border-white/8 opacity-65 cursor-pointer"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold text-[#F4F5F7]">
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-xs sm:text-sm font-bold text-[#F4F5F7] leading-tight">
                           {item.label}
                         </span>
                         <span
-                          className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                          className={`shrink-0 text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
                             locked
                               ? "bg-[#F7B267]/15 text-[#F7B267]"
                               : enabled
@@ -502,16 +504,16 @@ export function DashboardClient({
             </section>
 
             {/* 9:16 Clip-Safe Mode + Top Hook Banner */}
-            <section className="broadcast-card rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <SmartphoneNfc className="w-4 h-4 text-[#2EC4B6]" />
-                  <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+            <section className="broadcast-card rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <SmartphoneNfc className="w-4 h-4 shrink-0 text-[#2EC4B6]" />
+                  <h2 className="font-hud font-extrabold text-lg sm:text-2xl uppercase tracking-wide leading-snug">
                     9:16 Clip-Safe Mode
                   </h2>
                 </div>
                 {user.plan !== "pro" ? (
-                  <span className="text-[10px] font-extrabold px-2 py-1 rounded bg-[#F7B267]/15 text-[#F7B267]">
+                  <span className="shrink-0 text-[10px] font-extrabold px-2 py-1 rounded bg-[#F7B267]/15 text-[#F7B267]">
                     PRO
                   </span>
                 ) : (
@@ -525,7 +527,7 @@ export function DashboardClient({
                       }));
                       void updateOverlay({ clipSafeMode: nextVal });
                     }}
-                    className={`h-8 px-3 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                    className={`shrink-0 h-8 px-3 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
                       overlay.clipSafeMode
                         ? "bg-[#2EC4B6] text-[#0B0D12]"
                         : "bg-[#0B0D12] border border-white/15 text-[#8D96A5]"
@@ -536,7 +538,7 @@ export function DashboardClient({
                 )}
               </div>
 
-              <p className="text-xs text-[#8D96A5]">
+              <p className="text-xs sm:text-sm text-[#8D96A5] leading-relaxed">
                 Center all HUD widgets inside a vertical 9:16 safe window for
                 TikTok, Reels, and Whop clips, with an optional Top Hook Banner.
               </p>
@@ -558,12 +560,12 @@ export function DashboardClient({
                   value={hookBanner}
                   onChange={(e) => setHookBanner(e.target.value)}
                   placeholder="Top Hook Banner (e.g. WAIT FOR THE ENDING)"
-                  className="flex-1 h-10 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-xs text-[#F4F5F7] placeholder:text-[#8D96A5] disabled:opacity-50"
+                  className="w-full min-w-0 flex-1 h-10 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-xs sm:text-sm text-[#F4F5F7] placeholder:text-[#8D96A5] disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={user.plan !== "pro" || savingHook}
-                  className="h-10 px-4 rounded-xl bg-[#2EC4B6] text-[#0B0D12] font-bold text-xs shrink-0 disabled:opacity-45 cursor-pointer"
+                  className="w-full sm:w-auto h-10 px-4 rounded-xl bg-[#2EC4B6] text-[#0B0D12] font-bold text-xs sm:text-sm shrink-0 disabled:opacity-45 cursor-pointer"
                 >
                   {savingHook ? "Saving..." : "Save Banner"}
                 </button>
@@ -571,16 +573,16 @@ export function DashboardClient({
             </section>
 
             {/* Theme Selector */}
-            <section className="broadcast-card rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-[#F7B267]" />
-                  <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+            <section className="broadcast-card rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Palette className="w-4 h-4 shrink-0 text-[#F7B267]" />
+                  <h2 className="font-hud font-extrabold text-lg sm:text-2xl uppercase tracking-wide leading-snug">
                     HUD Broadcast Theme
                   </h2>
                 </div>
                 {user.plan === "free" && (
-                  <span className="text-[11px] font-bold text-[#F7B267]">
+                  <span className="shrink-0 text-[11px] font-bold text-[#F7B267]">
                     PRO UNLOCKS ALL
                   </span>
                 )}
@@ -606,18 +608,20 @@ export function DashboardClient({
                           : "bg-[#0B0D12] border-white/8 hover:border-white/20"
                       } disabled:opacity-50`}
                     >
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-sm font-bold text-[#F4F5F7]">
                           {t.name}
                         </div>
-                        <div className="text-xs text-[#8D96A5]">{t.desc}</div>
+                        <div className="text-xs text-[#8D96A5] leading-relaxed">
+                          {t.desc}
+                        </div>
                       </div>
                       {locked ? (
-                        <span className="text-[10px] font-extrabold px-2 py-1 rounded bg-[#F7B267]/15 text-[#F7B267]">
+                        <span className="shrink-0 text-[10px] font-extrabold px-2 py-1 rounded bg-[#F7B267]/15 text-[#F7B267]">
                           PRO
                         </span>
                       ) : selected ? (
-                        <span className="text-[10px] font-extrabold px-2 py-1 rounded bg-[#F25C54] text-[#0B0D12]">
+                        <span className="shrink-0 text-[10px] font-extrabold px-2 py-1 rounded bg-[#F25C54] text-[#0B0D12]">
                           ACTIVE
                         </span>
                       ) : null}
@@ -628,14 +632,14 @@ export function DashboardClient({
             </section>
 
             {/* Billing & Plan */}
-            <section className="broadcast-card rounded-2xl p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-[#F25C54]" />
-                <h2 className="font-hud font-extrabold text-2xl uppercase tracking-wide">
+            <section className="broadcast-card rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <KeyRound className="w-4 h-4 shrink-0 text-[#F25C54]" />
+                <h2 className="font-hud font-extrabold text-lg sm:text-2xl uppercase tracking-wide leading-snug">
                   Broadcaster Plan
                 </h2>
               </div>
-              <p className="text-xs text-[#8D96A5]">
+              <p className="text-xs sm:text-sm text-[#8D96A5] leading-relaxed">
                 {user.plan === "pro"
                   ? `Active Pro plan (${user.planType === "lifetime" ? "Launch Pass Lifetime" : user.subscriptionStatus}). Zero watermark, all 4 HUD widgets, Live Chat Polls, 9:16 Clip-Safe Mode, custom broadcast themes, and custom chapter checklists unlocked.`
                   : "Starter Free includes the Story Progress Bar and Wasted/Busted Counter plus Mobile Remote access with a bottom-corner LEONIDAHUD.COM watermark. Upgrade to Pro to remove branding and unlock Cash Ticker, Live Chat Polls, 9:16 Clip-Safe Mode, and custom themes."}
