@@ -23,9 +23,14 @@ function sanitizeCallbackUrl(raw?: string): string {
 }
 
 export default async function SignInPage(props: {
-  searchParams: Promise<{ callbackUrl?: string; plan?: string; error?: string }>;
+  searchParams: Promise<{
+    callbackUrl?: string;
+    plan?: string;
+    error?: string;
+    reason?: string;
+  }>;
 }) {
-  const { callbackUrl, plan, error } = await props.searchParams;
+  const { callbackUrl, plan, error, reason } = await props.searchParams;
   const checkoutPlan =
     plan === "lifetime" || plan === "monthly" ? plan : null;
   const targetCallbackUrl = checkoutPlan
@@ -47,6 +52,7 @@ export default async function SignInPage(props: {
           callbackUrl={targetCallbackUrl}
           checkoutPlan={checkoutPlan}
           authError={error ?? null}
+          authReason={reason ?? null}
           providers={providers}
         />
       </main>

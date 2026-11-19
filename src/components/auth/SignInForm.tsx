@@ -17,6 +17,7 @@ interface SignInFormProps {
   callbackUrl: string;
   checkoutPlan?: "lifetime" | "monthly" | null;
   authError?: string | null;
+  authReason?: string | null;
   providers: {
     twitch: boolean;
     discord: boolean;
@@ -26,7 +27,10 @@ interface SignInFormProps {
   };
 }
 
-function getFriendlyAuthError(code: string | null | undefined): string | null {
+function getFriendlyAuthError(
+  code: string | null | undefined,
+  reason?: string | null
+): string | null {
   if (!code) return null;
   switch (code) {
     case "OAuthAccountNotLinked":
@@ -35,8 +39,29 @@ function getFriendlyAuthError(code: string | null | undefined): string | null {
       return "That magic login link has expired or was already used. Request a fresh link below.";
     case "AccessDenied":
       return "Sign-in was canceled or denied by the provider.";
-    case "Configuration":
-      return "Authentication provider credentials need attention in environment settings.";
+    case "Configuration": {
+      let detail =
+        "Sign-in could not finish with your provider. Please try again on https://www.leonidahud.com or use another sign-in method.";
+      switch (reason) {
+        case "pkce_missing":
+          detail =
+            "Your browser security cookie expired or did not match the domain. Refresh this page and try signing in again from https://www.leonidahud.com.";
+          break;
+        case "adapter_error":
+          detail =
+            "We could not save your broadcaster profile yet. Please wait a moment and try again.";
+          break;
+        case "profile_parse":
+          detail =
+            "Your provider returned an incomplete account profile. Please verify your email with Twitch or Discord, or try the other sign-in option.";
+          break;
+        case "oauth_callback":
+          detail =
+            "Your sign-in session could not be verified with Twitch or Discord. Please retry from this page or use your other broadcaster account.";
+          break;
+      }
+      return reason ? `${detail} (Code: ${reason})` : detail;
+    }
     default:
       return "Could not complete sign-in. Please try again.";
   }
@@ -46,6 +71,7 @@ export function SignInForm({
   callbackUrl,
   checkoutPlan = null,
   authError = null,
+  authReason = null,
   providers,
 }: SignInFormProps) {
   const [email, setEmail] = useState("");
@@ -53,7 +79,7 @@ export function SignInForm({
   const [loading, setLoading] = useState<string | null>(null);
   const [emailSentTo, setEmailSentTo] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(() =>
-    getFriendlyAuthError(authError)
+    getFriendlyAuthError(authError, authReason)
   );
 
   const handleOAuth = async (provider: "twitch" | "discord") => {

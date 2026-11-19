@@ -14,7 +14,7 @@ import type { MissionItem } from "@/lib/types";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  email: text("email").unique().notNull(),
+  email: text("email").unique(),
   emailVerified: timestamp("email_verified", { mode: "date" }),
   name: text("name"),
   image: text("image"),

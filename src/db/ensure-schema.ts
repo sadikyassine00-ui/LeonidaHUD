@@ -18,7 +18,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
         await client`
           CREATE TABLE IF NOT EXISTS users (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            email text UNIQUE NOT NULL,
+            email text UNIQUE,
             email_verified timestamp,
             name text,
             image text,
@@ -32,7 +32,15 @@ export async function ensureDatabaseSchema(): Promise<void> {
           )
         `;
 
+        await client`ALTER TABLE users ALTER COLUMN email DROP NOT NULL`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified timestamp`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS name text`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS image text`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'free'`;
         await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_type text NOT NULL DEFAULT 'free'`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS paddle_customer_id text`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS paddle_subscription_id text`;
+        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status text NOT NULL DEFAULT 'inactive'`;
         await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS overlay_token text`;
 
         await client`

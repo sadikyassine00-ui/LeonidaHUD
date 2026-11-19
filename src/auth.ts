@@ -14,6 +14,83 @@ import {
   getOrCreateOverlayForUser,
 } from "@/lib/overlay-service";
 
+export type AuthFailureReason =
+  | "pkce_missing"
+  | "adapter_error"
+  | "oauth_callback"
+  | "profile_parse"
+  | "unknown";
+
+let lastAuthErrorReason: AuthFailureReason | null = null;
+
+function classifyAuthError(error: unknown): AuthFailureReason {
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current != null; depth += 1) {
+    if (current instanceof Error) {
+      parts.push(current.name, current.message);
+      const maybeType = (current as Error & { type?: unknown }).type;
+      if (typeof maybeType === "string") {
+        parts.push(maybeType);
+      }
+      current = (current as Error & { cause?: unknown }).cause;
+    } else if (typeof current === "object") {
+      try {
+        parts.push(JSON.stringify(current));
+      } catch {
+        parts.push(String(current));
+      }
+      current = (current as { cause?: unknown }).cause;
+    } else {
+      parts.push(String(current));
+      break;
+    }
+  }
+
+  const combined = parts.join(" ").toLowerCase();
+  if (
+    combined.includes("pkce") ||
+    combined.includes("code_verifier") ||
+    combined.includes("invalidcheck") ||
+    combined.includes("missingcsrf") ||
+    combined.includes("state value could not be parsed")
+  ) {
+    return "pkce_missing";
+  }
+  if (
+    combined.includes("adaptererror") ||
+    combined.includes("drizzle") ||
+    combined.includes("postgres") ||
+    combined.includes("neon") ||
+    combined.includes("null value in column") ||
+    combined.includes("violates") ||
+    combined.includes("does not exist") ||
+    combined.includes("connect e")
+  ) {
+    return "adapter_error";
+  }
+  if (
+    combined.includes("oauthprofileparseerror") ||
+    combined.includes("profile")
+  ) {
+    return "profile_parse";
+  }
+  if (
+    combined.includes("oauthcallbackerror") ||
+    combined.includes("callbackrouteerror") ||
+    combined.includes("oauth")
+  ) {
+    return "oauth_callback";
+  }
+  return "unknown";
+}
+
+export function consumeLastAuthErrorReason(): AuthFailureReason | null {
+  const reason = lastAuthErrorReason;
+  lastAuthErrorReason = null;
+  return reason;
+}
+
 function buildProviders(): Provider[] {
   const providers: Provider[] = [];
 
@@ -23,6 +100,64 @@ function buildProviders(): Provider[] {
         clientId: process.env.AUTH_TWITCH_ID,
         clientSecret: process.env.AUTH_TWITCH_SECRET,
         allowDangerousEmailAccountLinking: true,
+        token: {
+          async conform(response: Response) {
+            const text = await response.text();
+            let body: Record<string, unknown>;
+            try {
+              body = JSON.parse(text) as Record<string, unknown>;
+            } catch {
+              return new Response(text, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: {
+                  "content-type":
+                    response.headers.get("content-type") ?? "application/json",
+                },
+              });
+            }
+
+            if (response.ok) {
+              if (Array.isArray(body.scope)) {
+                body.scope = body.scope.join(" ");
+              } else if ("scope" in body && typeof body.scope !== "string") {
+                delete body.scope;
+              }
+            } else if (typeof body.error !== "string") {
+              body = {
+                error: "invalid_request",
+                error_description:
+                  typeof body.message === "string"
+                    ? body.message
+                    : "Twitch token request failed",
+              };
+            }
+
+            return new Response(JSON.stringify(body), {
+              status: response.status,
+              statusText: response.statusText,
+              headers: {
+                "content-type": "application/json",
+              },
+            });
+          },
+        },
+        profile(profile) {
+          const twitchId = String(profile.sub ?? profile.id ?? "");
+          const normalizedEmail =
+            typeof profile.email === "string" && profile.email.trim().length > 0
+              ? profile.email.trim().toLowerCase()
+              : `twitch_${twitchId || "user"}@users.leonidahud.com`;
+          return {
+            id: twitchId,
+            name:
+              profile.preferred_username ??
+              (typeof profile.name === "string" ? profile.name : null) ??
+              "Twitch Broadcaster",
+            email: normalizedEmail,
+            image: typeof profile.picture === "string" ? profile.picture : null,
+          };
+        },
       })
     );
   }
@@ -33,6 +168,30 @@ function buildProviders(): Provider[] {
         clientId: process.env.AUTH_DISCORD_ID,
         clientSecret: process.env.AUTH_DISCORD_SECRET,
         allowDangerousEmailAccountLinking: true,
+        profile(profile) {
+          let imageUrl: string;
+          if (profile.avatar === null) {
+            const defaultAvatarNumber =
+              profile.discriminator === "0"
+                ? Number(BigInt(profile.id) >> BigInt(22)) % 6
+                : parseInt(profile.discriminator, 10) % 5;
+            imageUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarNumber}.png`;
+          } else {
+            const format = profile.avatar.startsWith("a_") ? "gif" : "png";
+            imageUrl = `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.${format}`;
+          }
+          const normalizedEmail =
+            typeof profile.email === "string" && profile.email.trim().length > 0
+              ? profile.email.trim().toLowerCase()
+              : `discord_${profile.id}@users.leonidahud.com`;
+          return {
+            id: profile.id,
+            name:
+              profile.global_name ?? profile.username ?? "Discord Broadcaster",
+            email: normalizedEmail,
+            image: imageUrl,
+          };
+        },
       })
     );
   }
@@ -81,7 +240,7 @@ function buildProviders(): Provider[] {
             if (existing) {
               return {
                 id: existing.id,
-                email: existing.email,
+                email: existing.email ?? email,
                 name: existing.name ?? "Leonida Broadcaster",
                 image: existing.image,
               };
@@ -96,7 +255,7 @@ function buildProviders(): Provider[] {
               .returning();
             return {
               id: created.id,
-              email: created.email,
+              email: created.email ?? email,
               name: created.name,
               image: created.image,
             };
@@ -140,6 +299,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/signin",
     error: "/signin",
   },
+  logger: {
+    error(error) {
+      const reason = classifyAuthError(error);
+      lastAuthErrorReason = reason;
+      console.error("[LEONIDA AUTH ERROR]", reason, error);
+    },
+  },
   providers: buildProviders(),
   callbacks: {
     async jwt({ token, user }) {
@@ -157,13 +323,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
-      if (user.id) {
+      if (!user.id) return;
+      try {
+        await ensureDatabaseSchema();
         await getOrCreateOverlayForUser(user.id);
+      } catch (error) {
+        console.error(
+          "[LEONIDA AUTH EVENT ERROR] createUser overlay sync",
+          error
+        );
       }
     },
     async signIn({ user }) {
-      if (user.id) {
+      if (!user.id) return;
+      try {
+        await ensureDatabaseSchema();
         await getOrCreateOverlayForUser(user.id);
+      } catch (error) {
+        console.error("[LEONIDA AUTH EVENT ERROR] signIn overlay sync", error);
       }
     },
   },

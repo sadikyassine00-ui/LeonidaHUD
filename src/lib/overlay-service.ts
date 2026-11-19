@@ -969,7 +969,7 @@ export async function getUserBillingInfo(userId: string): Promise<{
   const plan: UserPlan = user.plan === "pro" ? "pro" : "free";
   return {
     id: user.id,
-    email: user.email,
+    email: user.email ?? "",
     name: user.name,
     plan,
     planTier: plan === "pro" ? "pro" : "starter",
