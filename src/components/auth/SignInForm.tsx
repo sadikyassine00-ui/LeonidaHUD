@@ -40,25 +40,39 @@ function getFriendlyAuthError(
     case "AccessDenied":
       return "Sign-in was canceled or denied by the provider.";
     case "Configuration": {
+      const normalized = (reason ?? "").toLowerCase();
       let detail =
-        "Sign-in could not finish with your provider. Please try again on https://www.leonidahud.com or use another sign-in method.";
-      switch (reason) {
-        case "pkce_missing":
-          detail =
-            "Your browser security cookie expired or did not match the domain. Refresh this page and try signing in again from https://www.leonidahud.com.";
-          break;
-        case "adapter_error":
-          detail =
-            "We could not save your broadcaster profile yet. Please wait a moment and try again.";
-          break;
-        case "profile_parse":
-          detail =
-            "Your provider returned an incomplete account profile. Please verify your email with Twitch or Discord, or try the other sign-in option.";
-          break;
-        case "oauth_callback":
-          detail =
-            "Your sign-in session could not be verified with Twitch or Discord. Please retry from this page or use your other broadcaster account.";
-          break;
+        "Your sign-in session could not be verified with Twitch or Discord. Please retry from this page or use your other broadcaster account.";
+      if (normalized.includes("access_denied")) {
+        detail =
+          "Sign-in was canceled or denied by your provider. Please try again when ready.";
+      } else if (
+        normalized.includes("rate_limited") ||
+        normalized.includes("_429")
+      ) {
+        detail =
+          "The sign-in provider is temporarily rate-limiting requests. Wait a moment and try again, or use your other broadcaster account.";
+      } else if (normalized.includes("redirect_uri")) {
+        detail =
+          "The provider rejected the callback address for this site. Verify the redirect URL matches https://www.leonidahud.com/api/auth/callback/twitch or /discord.";
+      } else if (normalized.includes("invalid_client")) {
+        detail =
+          "The provider rejected the app credentials. Please check the configured client ID and secret.";
+      } else if (normalized.includes("invalid_grant")) {
+        detail =
+          "Your sign-in code expired or was already used. Please try signing in again from this page.";
+      } else if (
+        normalized === "pkce_missing" ||
+        normalized.includes("state_mismatch")
+      ) {
+        detail =
+          "Your browser security cookie expired or did not match the domain. Refresh this page and try signing in again from https://www.leonidahud.com.";
+      } else if (normalized.startsWith("adapter_error")) {
+        detail =
+          "We could not save your broadcaster profile yet. Please wait a moment and try again.";
+      } else if (normalized.includes("profile_parse")) {
+        detail =
+          "Your provider returned an incomplete account profile. Please verify your email with Twitch or Discord, or try the other sign-in option.";
       }
       return reason ? `${detail} (Code: ${reason})` : detail;
     }
