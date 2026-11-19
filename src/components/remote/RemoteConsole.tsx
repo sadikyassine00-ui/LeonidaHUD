@@ -1,14 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Check,
   DollarSign,
   ExternalLink,
   Layers,
-  Plus,
   Radio,
   RotateCcw,
   Settings,
@@ -17,13 +15,19 @@ import {
   Square,
   Vote,
 } from "lucide-react";
-import { DEFAULT_MISSIONS } from "@/data/missions";
 import {
   startChatPollListeners,
   type ChatPollListenerHandle,
   type ChatVoteCounts,
 } from "@/lib/chat-poll-listener";
-import { PRESET_POLLS, type MissionItem, type OverlayStateSnapshot } from "@/lib/types";
+import { PRESET_POLLS, type OverlayStateSnapshot } from "@/lib/types";
+
+const OBJECTIVE_PRESETS = [
+  "Main Story",
+  "100% Run",
+  "Side Hustles",
+  "Free Roam",
+];
 
 interface RemoteConsoleProps {
   initialOverlay: OverlayStateSnapshot;
@@ -39,9 +43,12 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
   const [activeTab, setActiveTab] = useState<"controls" | "missions" | "polls">(
     "controls"
   );
-  const [selectedChapter, setSelectedChapter] = useState<number>(1);
-  const [customMissionTitle, setCustomMissionTitle] = useState<string>("");
-  const [customMissionRegion, setCustomMissionRegion] = useState<string>("Leonida");
+  const [storyPercentDraft, setStoryPercentDraft] = useState<number>(
+    initialOverlay.storyPercent
+  );
+  const [chapterInput, setChapterInput] = useState<string>(
+    initialOverlay.storyChapter || "Story Playthrough"
+  );
   const [syncing, setSyncing] = useState<boolean>(false);
   const [chatStatus, setChatStatus] = useState<ChatVoteCounts>({
     votesA: initialOverlay.activePoll?.votesA ?? 0,
@@ -220,18 +227,23 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
     }));
   };
 
-  const allMissions = useMemo<MissionItem[]>(() => {
-    return [...DEFAULT_MISSIONS, ...(overlay.customMissions ?? [])];
-  }, [overlay.customMissions]);
+  const commitStoryPercent = (next: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(next)));
+    setStoryPercentDraft(clamped);
+    void mutateOverlay({ storyPercent: clamped }, (prev) => ({
+      ...prev,
+      storyPercent: clamped,
+    }));
+  };
 
-  const chapterMissions = useMemo(() => {
-    return allMissions.filter((m) => m.chapterNumber === selectedChapter);
-  }, [allMissions, selectedChapter]);
-
-  const completedSet = useMemo(
-    () => new Set(overlay.completedMissionIds),
-    [overlay.completedMissionIds]
-  );
+  const commitStoryChapter = (label: string) => {
+    const cleaned = label.trim().slice(0, 60) || "Story Playthrough";
+    setChapterInput(cleaned);
+    void mutateOverlay({ storyChapter: cleaned }, (prev) => ({
+      ...prev,
+      storyChapter: cleaned,
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-[#0B0D12] text-[#F4F5F7] flex flex-col max-w-md mx-auto border-x border-white/8">
@@ -335,7 +347,7 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>MISSIONS</span>
+          <span>STORY</span>
         </button>
         <button
           type="button"
@@ -542,150 +554,120 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
         )}
 
         {activeTab === "missions" && (
-          <section className="space-y-3">
-            <div className="broadcast-card rounded-2xl p-3.5">
-              <div className="flex items-center justify-between mb-2">
-                <div>
+          <section className="space-y-3.5">
+            {/* Story Completion Slider & Quick Steppers */}
+            <div className="broadcast-card rounded-2xl p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#8D96A5]">
-                    ACTIVE CHAPTER
+                    STORY COMPLETION
                   </div>
-                  <div className="text-sm font-bold text-[#F7B267]">
+                  <div className="text-sm font-bold text-[#F7B267] truncate">
                     {overlay.storyChapter}
                   </div>
                 </div>
-                <div className="font-hud font-extrabold text-3xl text-[#F4F5F7]">
-                  {overlay.storyPercent}%
+                <div className="font-hud font-extrabold text-4xl leading-none text-[#F4F5F7] shrink-0">
+                  {storyPercentDraft}%
                 </div>
               </div>
 
-              <div className="grid grid-cols-6 gap-1 mt-2">
-                {[1, 2, 3, 4, 5, 6].map((ch) => (
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  aria-label="Story completion percentage"
+                  value={storyPercentDraft}
+                  onChange={(e) => {
+                    const nextVal = Number(e.target.value);
+                    setStoryPercentDraft(nextVal);
+                    setOverlay((prev) => ({ ...prev, storyPercent: nextVal }));
+                  }}
+                  onPointerUp={() => commitStoryPercent(storyPercentDraft)}
+                  onKeyUp={() => commitStoryPercent(storyPercentDraft)}
+                  className="w-full h-2.5 rounded-lg bg-[#0B0D12] accent-[#F7B267] cursor-pointer"
+                />
+                <div className="flex justify-between text-[11px] font-semibold text-[#8D96A5]">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "-1%", delta: -1, primary: false },
+                  { label: "+1%", delta: 1, primary: true },
+                  { label: "+5%", delta: 5, primary: true },
+                ].map((btn) => (
                   <button
-                    key={ch}
+                    key={btn.label}
                     type="button"
-                    onClick={() => setSelectedChapter(ch)}
-                    className={`py-1.5 rounded-lg font-hud font-bold text-sm transition-colors ${
-                      selectedChapter === ch
-                        ? "bg-[#F7B267] text-[#0B0D12]"
-                        : "bg-[#0B0D12] text-[#8D96A5] hover:text-[#F4F5F7]"
+                    onClick={() =>
+                      commitStoryPercent(storyPercentDraft + btn.delta)
+                    }
+                    className={`h-12 rounded-xl font-hud font-extrabold text-xl active:scale-[0.97] transition-all border ${
+                      btn.primary
+                        ? "bg-[#F7B267]/15 border-[#F7B267]/40 text-[#F7B267] hover:bg-[#F7B267]/25"
+                        : "bg-[#0B0D12] border-white/12 text-[#8D96A5] hover:text-[#F4F5F7]"
                     }`}
                   >
-                    CH {ch}
+                    {btn.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="space-y-2">
-              {chapterMissions.map((mission) => {
-                const done = completedSet.has(mission.id);
-                return (
-                  <button
-                    key={mission.id}
-                    type="button"
-                    onClick={() =>
-                      void mutateOverlay(
-                        { toggleMissionId: mission.id },
-                        (prev) => {
-                          const exists = prev.completedMissionIds.includes(
-                            mission.id
-                          );
-                          const nextIds = exists
-                            ? prev.completedMissionIds.filter(
-                                (id) => id !== mission.id
-                              )
-                            : [...prev.completedMissionIds, mission.id];
-                          return {
-                            ...prev,
-                            completedMissionIds: nextIds,
-                          };
-                        }
-                      )
-                    }
-                    className={`w-full text-left rounded-xl p-3 border transition-all flex items-center justify-between gap-3 active:scale-[0.99] ${
-                      done
-                        ? "bg-[#2EC4B6]/10 border-[#2EC4B6]/35"
-                        : "bg-[#131720] border-white/8 hover:border-white/20"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div
-                        className={`text-sm font-semibold truncate ${
-                          done ? "text-[#F4F5F7]" : "text-[#F4F5F7]"
-                        }`}
-                      >
-                        {mission.title}
-                      </div>
-                      <div className="text-xs text-[#8D96A5]">
-                        {mission.region}
-                        {mission.isCustom ? " | Custom" : ""}
-                      </div>
-                    </div>
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
-                        done
-                          ? "bg-[#2EC4B6] border-[#2EC4B6] text-[#0B0D12]"
-                          : "bg-[#0B0D12] border-white/15 text-transparent"
+            {/* Editable Current Chapter / Objective */}
+            <div className="broadcast-card rounded-2xl p-4 space-y-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-[#8D96A5]">
+                Current Chapter / Objective
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  commitStoryChapter(chapterInput);
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  type="text"
+                  maxLength={60}
+                  value={chapterInput}
+                  onChange={(e) => setChapterInput(e.target.value)}
+                  placeholder="Story Playthrough"
+                  aria-label="Current Chapter or Objective"
+                  className="flex-1 h-11 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-sm text-[#F4F5F7] placeholder:text-[#8D96A5] focus:outline-none focus:border-[#F7B267]"
+                />
+                <button
+                  type="submit"
+                  className="h-11 px-4 rounded-xl bg-[#F7B267] hover:bg-[#F7B267]/90 text-[#0B0D12] font-extrabold text-xs shrink-0 active:scale-[0.97] cursor-pointer"
+                >
+                  Update HUD
+                </button>
+              </form>
+
+              <div className="flex flex-wrap gap-1.5">
+                {OBJECTIVE_PRESETS.map((preset) => {
+                  const active = overlay.storyChapter === preset;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => commitStoryChapter(preset)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                        active
+                          ? "bg-[#F7B267] border-[#F7B267] text-[#0B0D12]"
+                          : "bg-[#0B0D12] border-white/10 text-[#8D96A5] hover:text-[#F4F5F7]"
                       }`}
                     >
-                      <Check className="w-4 h-4" />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom Mission Adder (Pro) */}
-            <div className="broadcast-card rounded-2xl p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#8D96A5]">
-                  Add Custom Mission
-                </span>
-                {overlay.plan === "free" && (
-                  <span className="text-[11px] font-bold text-[#F7B267]">
-                    PRO FEATURE
-                  </span>
-                )}
+                      {preset}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Mission title"
-                  value={customMissionTitle}
-                  onChange={(e) => setCustomMissionTitle(e.target.value)}
-                  disabled={overlay.plan !== "pro"}
-                  className="flex-1 h-10 rounded-xl bg-[#0B0D12] border border-white/10 px-3 text-xs text-[#F4F5F7] placeholder:text-[#8D96A5] disabled:opacity-50"
-                />
-                <input
-                  type="text"
-                  placeholder="Region"
-                  value={customMissionRegion}
-                  onChange={(e) => setCustomMissionRegion(e.target.value)}
-                  disabled={overlay.plan !== "pro"}
-                  className="w-24 h-10 rounded-xl bg-[#0B0D12] border border-white/10 px-2.5 text-xs text-[#F4F5F7] placeholder:text-[#8D96A5] disabled:opacity-50"
-                />
-              </div>
-              <button
-                type="button"
-                disabled={overlay.plan !== "pro" || !customMissionTitle.trim()}
-                onClick={() => {
-                  const title = customMissionTitle.trim();
-                  if (!title) return;
-                  setCustomMissionTitle("");
-                  void mutateOverlay({
-                    addCustomMission: {
-                      chapterNumber: selectedChapter,
-                      chapterTitle: `Chapter ${selectedChapter}: Custom Operations`,
-                      title,
-                      region: customMissionRegion.trim() || "Leonida",
-                    },
-                  });
-                }}
-                className="w-full h-10 rounded-xl bg-[#F7B267] text-[#0B0D12] font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add to Chapter {selectedChapter}</span>
-              </button>
             </div>
           </section>
         )}
@@ -698,10 +680,10 @@ export function RemoteConsole({ initialOverlay }: RemoteConsoleProps) {
                   Pro Broadcaster Feature
                 </div>
                 <h2 className="font-hud font-extrabold text-2xl text-[#F4F5F7] uppercase">
-                  Automated Twitch &amp; Kick Chat Polls
+                  Live Viewer Chat Polls (!A / !B)
                 </h2>
                 <p className="text-xs text-[#8D96A5] leading-relaxed">
-                  Upgrade to the $49 Launch Pass (or $29/mo) to launch automated !A / !B viewer chat polls on your OBS overlay and remove the watermark.
+                  Upgrade to the $49 Launch Pass (or $29/mo) to launch live !A / !B viewer polls on your OBS overlay and remove the watermark.
                 </p>
                 <Link
                   href="/dashboard?checkout=lifetime"

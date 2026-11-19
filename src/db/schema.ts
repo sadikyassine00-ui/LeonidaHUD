@@ -84,7 +84,7 @@ export const overlays = pgTable("overlays", {
   twitchChannel: text("twitch_channel"),
   kickChannel: text("kick_channel"),
   storyChapter: text("story_chapter")
-    .default("Chapter 1: Welcome to Leonida")
+    .default("Story Playthrough")
     .notNull(),
   storyPercent: integer("story_percent").default(0).notNull(),
   completedMissionIds: jsonb("completed_mission_ids")

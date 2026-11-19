@@ -78,7 +78,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
             theme text NOT NULL DEFAULT 'sunset-broadcast',
             twitch_channel text,
             kick_channel text,
-            story_chapter text NOT NULL DEFAULT 'Chapter 1: Welcome to Leonida',
+            story_chapter text NOT NULL DEFAULT 'Story Playthrough',
             story_percent integer NOT NULL DEFAULT 0,
             completed_mission_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
             custom_missions jsonb NOT NULL DEFAULT '[]'::jsonb,

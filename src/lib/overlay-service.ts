@@ -71,7 +71,7 @@ function createInitialDevStore(): DevStoreData {
         plan: "free",
         twitchChannel: "",
         kickChannel: "",
-        storyChapter: "Chapter 1: Welcome to Leonida",
+        storyChapter: "Story Playthrough",
         storyPercent: 8,
         completedMissionIds: ["ch1-m1", "ch1-m2"],
         customMissions: [],
@@ -299,7 +299,7 @@ export async function getOrCreateOverlayForUser(
         plan: user.plan,
         twitchChannel: "",
         kickChannel: "",
-        storyChapter: "Chapter 1: Welcome to Leonida",
+        storyChapter: "Story Playthrough",
         storyPercent: 0,
         completedMissionIds: [],
         customMissions: [],
@@ -413,6 +413,8 @@ export interface OverlayUpdatePatch {
   showPollWidget?: boolean;
   clipSafeMode?: boolean;
   hookBanner?: string | null;
+  storyPercent?: number;
+  storyChapter?: string;
 }
 
 export async function updateOverlayForUser(
@@ -465,10 +467,29 @@ export async function updateOverlayForUser(
     }
   }
 
-  const { storyPercent, storyChapter } = calculateStoryProgress(
-    nextCompletedIds,
-    nextCustomMissions
+  const missionMutated = Boolean(
+    patch.toggleMissionId ||
+      patch.completedMissionIds ||
+      patch.addCustomMission
   );
+
+  const computedProgress = missionMutated
+    ? calculateStoryProgress(nextCompletedIds, nextCustomMissions)
+    : null;
+
+  const storyPercent =
+    typeof patch.storyPercent === "number" && Number.isFinite(patch.storyPercent)
+      ? Math.max(0, Math.min(100, Math.round(patch.storyPercent)))
+      : computedProgress
+        ? computedProgress.storyPercent
+        : current.storyPercent;
+
+  const storyChapter =
+    typeof patch.storyChapter === "string" && patch.storyChapter.trim().length > 0
+      ? patch.storyChapter.trim().slice(0, 60)
+      : computedProgress
+        ? computedProgress.storyChapter
+        : current.storyChapter;
 
   const nextTheme: HudTheme =
     current.plan === "pro" && patch.theme

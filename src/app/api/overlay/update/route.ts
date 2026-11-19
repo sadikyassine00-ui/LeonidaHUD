@@ -90,6 +90,12 @@ export async function POST(request: NextRequest) {
     patch.showCashWidget = body.showCashWidget;
   if (typeof body.showPollWidget === "boolean")
     patch.showPollWidget = body.showPollWidget;
+  if (typeof body.storyPercent === "number" && Number.isFinite(body.storyPercent)) {
+    patch.storyPercent = Math.max(0, Math.min(100, Math.round(body.storyPercent)));
+  }
+  if (typeof body.storyChapter === "string" && body.storyChapter.trim()) {
+    patch.storyChapter = body.storyChapter.trim().slice(0, 60);
+  }
   if (typeof body.clipSafeMode === "boolean")
     patch.clipSafeMode = body.clipSafeMode;
   if (body.hookBanner !== undefined) {
