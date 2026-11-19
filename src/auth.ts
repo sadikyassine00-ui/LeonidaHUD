@@ -2,10 +2,12 @@ import NextAuth from "next-auth";
 import type { Provider } from "next-auth/providers";
 import Twitch from "next-auth/providers/twitch";
 import Discord from "next-auth/providers/discord";
+import Resend from "next-auth/providers/resend";
 import Nodemailer from "next-auth/providers/nodemailer";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { getDb, hasDatabaseConfig, schema } from "@/db";
+import { ensureDatabaseSchema } from "@/db/ensure-schema";
 import {
   DEMO_USER_EMAIL,
   DEMO_USER_ID,
@@ -20,6 +22,7 @@ function buildProviders(): Provider[] {
       Twitch({
         clientId: process.env.AUTH_TWITCH_ID,
         clientSecret: process.env.AUTH_TWITCH_SECRET,
+        allowDangerousEmailAccountLinking: true,
       })
     );
   }
@@ -29,24 +32,32 @@ function buildProviders(): Provider[] {
       Discord({
         clientId: process.env.AUTH_DISCORD_ID,
         clientSecret: process.env.AUTH_DISCORD_SECRET,
+        allowDangerousEmailAccountLinking: true,
       })
     );
   }
 
-  if (process.env.EMAIL_SERVER && process.env.EMAIL_FROM) {
-    providers.push(
-      Nodemailer({
-        server: process.env.EMAIL_SERVER,
-        from: process.env.EMAIL_FROM,
-      })
-    );
+  // Email Magic Links require database verification_tokens storage
+  if (hasDatabaseConfig()) {
+    if (process.env.AUTH_RESEND_KEY) {
+      providers.push(
+        Resend({
+          apiKey: process.env.AUTH_RESEND_KEY,
+          from: process.env.EMAIL_FROM || "Leonida HUD <login@leonidahud.com>",
+        })
+      );
+    } else if (process.env.EMAIL_SERVER && process.env.EMAIL_FROM) {
+      providers.push(
+        Nodemailer({
+          server: process.env.EMAIL_SERVER,
+          from: process.env.EMAIL_FROM,
+        })
+      );
+    }
   }
 
-  const demoAllowed =
-    process.env.ENABLE_DEMO_AUTH === "true" ||
-    process.env.NODE_ENV !== "production";
-
-  if (demoAllowed) {
+  // Demo Auth ONLY activates when explicitly set to "true"
+  if (process.env.ENABLE_DEMO_AUTH === "true") {
     providers.push(
       Credentials({
         id: "demo-broadcaster",
@@ -62,6 +73,7 @@ function buildProviders(): Provider[] {
               : DEMO_USER_EMAIL;
 
           if (hasDatabaseConfig()) {
+            await ensureDatabaseSchema();
             const db = getDb();
             const existing = await db.query.users.findFirst({
               where: (u, { eq }) => eq(u.email, email),
@@ -126,6 +138,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: {
     signIn: "/signin",
+    error: "/signin",
   },
   providers: buildProviders(),
   callbacks: {

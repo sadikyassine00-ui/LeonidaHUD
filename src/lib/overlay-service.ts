@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { neon } from "@neondatabase/serverless";
 import { getDb, hasDatabaseConfig, schema } from "@/db";
+import { ensureDatabaseSchema } from "@/db/ensure-schema";
 import { calculateStoryProgress } from "@/data/missions";
 import { generateId, generatePublicKey, generateSecretTriggerKey } from "@/lib/keys";
 import type {
@@ -13,25 +13,6 @@ import type {
   PollSnapshot,
   UserPlan,
 } from "@/lib/types";
-
-let schemaInitPromise: Promise<void> | null = null;
-
-async function ensureUserSchemaColumns(): Promise<void> {
-  if (!hasDatabaseConfig()) return;
-  if (!schemaInitPromise) {
-    schemaInitPromise = (async () => {
-      try {
-        const client = neon(process.env.DATABASE_URL!);
-        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_type text NOT NULL DEFAULT 'free'`;
-        await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS overlay_token text`;
-      } catch (err) {
-        schemaInitPromise = null;
-        throw err;
-      }
-    })();
-  }
-  await schemaInitPromise;
-}
 
 export const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
 export const DEMO_USER_EMAIL = "streamer@leonidahud.com";
@@ -217,7 +198,7 @@ export async function getOverlayByPublicKey(
     };
   }
 
-  await ensureUserSchemaColumns();
+  await ensureDatabaseSchema();
   const db = getDb();
   const rows = await db
     .select({
@@ -343,7 +324,7 @@ export async function getOrCreateOverlayForUser(
     };
   }
 
-  await ensureUserSchemaColumns();
+  await ensureDatabaseSchema();
   const db = getDb();
   const userRows = await db
     .select()
@@ -926,7 +907,7 @@ export async function getUserBillingInfo(userId: string): Promise<{
     };
   }
 
-  await ensureUserSchemaColumns();
+  await ensureDatabaseSchema();
   const db = getDb();
   const rows = await db
     .select()
@@ -1010,7 +991,7 @@ export async function updateUserPlanFromPaddle(params: {
     return;
   }
 
-  await ensureUserSchemaColumns();
+  await ensureDatabaseSchema();
   const db = getDb();
   const alreadyProcessed = await db
     .select()

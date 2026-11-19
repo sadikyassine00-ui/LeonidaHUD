@@ -15,15 +15,22 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+function sanitizeCallbackUrl(raw?: string): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
+    return "/dashboard";
+  }
+  return raw;
+}
+
 export default async function SignInPage(props: {
-  searchParams: Promise<{ callbackUrl?: string; plan?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; plan?: string; error?: string }>;
 }) {
-  const { callbackUrl, plan } = await props.searchParams;
+  const { callbackUrl, plan, error } = await props.searchParams;
   const checkoutPlan =
     plan === "lifetime" || plan === "monthly" ? plan : null;
   const targetCallbackUrl = checkoutPlan
     ? `/dashboard?checkout=${checkoutPlan}`
-    : callbackUrl || "/dashboard";
+    : sanitizeCallbackUrl(callbackUrl);
 
   const session = await auth();
   if (session?.user?.id) {
@@ -39,6 +46,7 @@ export default async function SignInPage(props: {
         <SignInForm
           callbackUrl={targetCallbackUrl}
           checkoutPlan={checkoutPlan}
+          authError={error ?? null}
           providers={providers}
         />
       </main>

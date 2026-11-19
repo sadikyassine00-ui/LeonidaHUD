@@ -1,5 +1,5 @@
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || "https://leonidahud.vercel.app"
+  process.env.NEXT_PUBLIC_APP_URL || "https://www.leonidahud.com"
 ).replace(/\/+$/, "");
 
 export interface GuideLink {
