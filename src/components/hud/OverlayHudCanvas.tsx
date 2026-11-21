@@ -230,24 +230,24 @@ export function OverlayHudCanvas({
   const hudScale = isObs
     ? isClipSafe
       ? Math.min(
-          1.15,
+          0.92,
           Math.max(
-            0.58,
+            0.42,
             isPortrait
-              ? Math.min(viewport.width / 1080, viewport.height / 1920)
-              : Math.min(viewport.height / 1080, 1)
+              ? Math.min(viewport.width / 960, viewport.height / 1920)
+              : Math.min(viewport.height / 1180, 0.88)
           )
         )
       : Math.min(
-          1.35,
+          1.15,
           Math.max(
-            0.55,
-            Math.min(viewport.width / 1920, viewport.height / 1080)
+            0.5,
+            Math.min(viewport.width / 1920, viewport.height / 1080) * 0.86
           )
         )
     : isClipSafe
-      ? 0.56
-      : 0.74;
+      ? 0.46
+      : 0.68;
 
   const totalSegments = 12;
   const filledSegments = Math.round(
@@ -267,12 +267,12 @@ export function OverlayHudCanvas({
         className={`w-full rounded-xl text-center ${tokens.plate}`}
         style={{
           padding:
-            "calc(8px * var(--hud-scale)) calc(16px * var(--hud-scale))",
+            "calc(6px * var(--hud-scale)) calc(12px * var(--hud-scale))",
         }}
       >
         <div
           className={`font-hud font-extrabold uppercase tracking-wider truncate ${tokens.chapterText}`}
-          style={{ fontSize: "calc(18px * var(--hud-scale))" }}
+          style={{ fontSize: "calc(15px * var(--hud-scale))" }}
         >
           {state.hookBanner}
         </div>
@@ -291,8 +291,9 @@ export function OverlayHudCanvas({
             isClipSafe ? "w-full" : "w-full max-w-[calc(420px*var(--hud-scale))]"
           } ${tokens.plate}`}
           style={{
-            padding:
-              "calc(14px * var(--hud-scale)) calc(18px * var(--hud-scale))",
+            padding: isClipSafe
+              ? "calc(10px * var(--hud-scale)) calc(14px * var(--hud-scale))"
+              : "calc(12px * var(--hud-scale)) calc(16px * var(--hud-scale))",
           }}
         >
           <div className="flex items-start justify-between gap-3">
@@ -301,19 +302,21 @@ export function OverlayHudCanvas({
                 className={`rounded-full shrink-0 ${tokens.accentBar}`}
                 style={{
                   width: "calc(4px * var(--hud-scale))",
-                  height: "calc(34px * var(--hud-scale))",
+                  height: isClipSafe
+                    ? "calc(28px * var(--hud-scale))"
+                    : "calc(32px * var(--hud-scale))",
                 }}
               />
               <div className="min-w-0">
                 <div
                   className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
-                  style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+                  style={{ fontSize: "calc(10px * var(--hud-scale))" }}
                 >
                   STORY PROGRESS
                 </div>
                 <div
                   className={`font-semibold truncate ${tokens.chapterText}`}
-                  style={{ fontSize: "calc(16px * var(--hud-scale))" }}
+                  style={{ fontSize: "calc(15px * var(--hud-scale))" }}
                 >
                   {state.storyChapter}
                 </div>
@@ -321,7 +324,11 @@ export function OverlayHudCanvas({
             </div>
             <div
               className={`font-hud font-extrabold leading-none shrink-0 ${tokens.valueText}`}
-              style={{ fontSize: "calc(34px * var(--hud-scale))" }}
+              style={{
+                fontSize: isClipSafe
+                  ? "calc(28px * var(--hud-scale))"
+                  : "calc(32px * var(--hud-scale))",
+              }}
             >
               {state.storyPercent}%
             </div>
@@ -329,7 +336,11 @@ export function OverlayHudCanvas({
 
           <div
             className="grid grid-cols-12 gap-1"
-            style={{ marginTop: "calc(10px * var(--hud-scale))" }}
+            style={{
+              marginTop: isClipSafe
+                ? "calc(7px * var(--hud-scale))"
+                : "calc(9px * var(--hud-scale))",
+            }}
           >
             {Array.from({ length: totalSegments }).map((_, idx) => {
               const active = idx < filledSegments;
@@ -337,7 +348,11 @@ export function OverlayHudCanvas({
                 <div
                   key={idx}
                   className={`rounded-sm overflow-hidden ${tokens.segmentTrack}`}
-                  style={{ height: "calc(7px * var(--hud-scale))" }}
+                  style={{
+                    height: isClipSafe
+                      ? "calc(5px * var(--hud-scale))"
+                      : "calc(6px * var(--hud-scale))",
+                  }}
                 >
                   {active && (
                     <motion.div
@@ -369,13 +384,14 @@ export function OverlayHudCanvas({
             isClipSafe ? "w-full flex items-center justify-between" : "text-right"
           } ${tokens.plate}`}
           style={{
-            padding:
-              "calc(12px * var(--hud-scale)) calc(20px * var(--hud-scale))",
+            padding: isClipSafe
+              ? "calc(8px * var(--hud-scale)) calc(14px * var(--hud-scale))"
+              : "calc(11px * var(--hud-scale)) calc(18px * var(--hud-scale))",
           }}
         >
           <div
             className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
-            style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+            style={{ fontSize: "calc(10px * var(--hud-scale))" }}
           >
             NET WORTH
           </div>
@@ -396,7 +412,11 @@ export function OverlayHudCanvas({
                 className={`font-hud font-extrabold leading-none tracking-tight transition-colors duration-300 ${
                   cashFlash === "down" ? "text-[#F25C54]" : "text-[#2EC4B6]"
                 }`}
-                style={{ fontSize: "calc(42px * var(--hud-scale))" }}
+                style={{
+                  fontSize: isClipSafe
+                    ? "calc(28px * var(--hud-scale))"
+                    : "calc(38px * var(--hud-scale))",
+                }}
               >
                 {formatCash(state.cashBalance)}
               </motion.div>
@@ -419,9 +439,12 @@ export function OverlayHudCanvas({
             isClipSafe ? "w-full justify-around" : ""
           } ${tokens.plate}`}
           style={{
-            gap: "calc(20px * var(--hud-scale))",
-            padding:
-              "calc(14px * var(--hud-scale)) calc(20px * var(--hud-scale))",
+            gap: isClipSafe
+              ? "calc(14px * var(--hud-scale))"
+              : "calc(18px * var(--hud-scale))",
+            padding: isClipSafe
+              ? "calc(8px * var(--hud-scale)) calc(14px * var(--hud-scale))"
+              : "calc(12px * var(--hud-scale)) calc(18px * var(--hud-scale))",
           }}
         >
           <motion.div
@@ -436,21 +459,29 @@ export function OverlayHudCanvas({
             <div
               className="flex items-center justify-center rounded-lg border border-[#F25C54]/30 bg-[#F25C54]/12 text-[#F25C54]"
               style={{
-                width: "calc(42px * var(--hud-scale))",
-                height: "calc(42px * var(--hud-scale))",
+                width: isClipSafe
+                  ? "calc(32px * var(--hud-scale))"
+                  : "calc(38px * var(--hud-scale))",
+                height: isClipSafe
+                  ? "calc(32px * var(--hud-scale))"
+                  : "calc(38px * var(--hud-scale))",
               }}
             >
               <SkullIcon
                 style={{
-                  width: "calc(22px * var(--hud-scale))",
-                  height: "calc(22px * var(--hud-scale))",
+                  width: isClipSafe
+                    ? "calc(18px * var(--hud-scale))"
+                    : "calc(20px * var(--hud-scale))",
+                  height: isClipSafe
+                    ? "calc(18px * var(--hud-scale))"
+                    : "calc(20px * var(--hud-scale))",
                 }}
               />
             </div>
             <div>
               <div
                 className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
-                style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+                style={{ fontSize: "calc(10px * var(--hud-scale))" }}
               >
                 WASTED
               </div>
@@ -458,7 +489,11 @@ export function OverlayHudCanvas({
                 className={`font-hud font-extrabold leading-none transition-colors ${
                   wastedPulse ? "text-[#F25C54]" : tokens.valueText
                 }`}
-                style={{ fontSize: "calc(32px * var(--hud-scale))" }}
+                style={{
+                  fontSize: isClipSafe
+                    ? "calc(24px * var(--hud-scale))"
+                    : "calc(30px * var(--hud-scale))",
+                }}
               >
                 {state.wastedCount}
               </div>
@@ -467,7 +502,11 @@ export function OverlayHudCanvas({
 
           <div
             className="w-px bg-white/10"
-            style={{ height: "calc(32px * var(--hud-scale))" }}
+            style={{
+              height: isClipSafe
+                ? "calc(24px * var(--hud-scale))"
+                : "calc(30px * var(--hud-scale))",
+            }}
           />
 
           <motion.div
@@ -482,21 +521,29 @@ export function OverlayHudCanvas({
             <div
               className="flex items-center justify-center rounded-lg border border-[#F7B267]/30 bg-[#F7B267]/12 text-[#F7B267]"
               style={{
-                width: "calc(42px * var(--hud-scale))",
-                height: "calc(42px * var(--hud-scale))",
+                width: isClipSafe
+                  ? "calc(32px * var(--hud-scale))"
+                  : "calc(38px * var(--hud-scale))",
+                height: isClipSafe
+                  ? "calc(32px * var(--hud-scale))"
+                  : "calc(38px * var(--hud-scale))",
               }}
             >
               <HandcuffIcon
                 style={{
-                  width: "calc(22px * var(--hud-scale))",
-                  height: "calc(22px * var(--hud-scale))",
+                  width: isClipSafe
+                    ? "calc(18px * var(--hud-scale))"
+                    : "calc(20px * var(--hud-scale))",
+                  height: isClipSafe
+                    ? "calc(18px * var(--hud-scale))"
+                    : "calc(20px * var(--hud-scale))",
                 }}
               />
             </div>
             <div>
               <div
                 className={`uppercase tracking-[0.14em] font-bold ${tokens.labelText}`}
-                style={{ fontSize: "calc(11px * var(--hud-scale))" }}
+                style={{ fontSize: "calc(10px * var(--hud-scale))" }}
               >
                 BUSTED
               </div>
@@ -504,7 +551,11 @@ export function OverlayHudCanvas({
                 className={`font-hud font-extrabold leading-none transition-colors ${
                   bustedPulse ? "text-[#F25C54]" : tokens.valueText
                 }`}
-                style={{ fontSize: "calc(32px * var(--hud-scale))" }}
+                style={{
+                  fontSize: isClipSafe
+                    ? "calc(24px * var(--hud-scale))"
+                    : "calc(30px * var(--hud-scale))",
+                }}
               >
                 {state.bustedCount}
               </div>
@@ -528,29 +579,34 @@ export function OverlayHudCanvas({
             isClipSafe ? "w-full" : "w-full max-w-[calc(410px*var(--hud-scale))]"
           } ${tokens.plate}`}
           style={{
-            padding:
-              "calc(14px * var(--hud-scale)) calc(18px * var(--hud-scale))",
+            padding: isClipSafe
+              ? "calc(10px * var(--hud-scale)) calc(14px * var(--hud-scale))"
+              : "calc(12px * var(--hud-scale)) calc(16px * var(--hud-scale))",
           }}
         >
-          <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-2 min-w-0">
               <span className="inline-block w-2 h-2 rounded-full bg-[#F25C54] animate-pulse shrink-0" />
               <span
                 className={`font-hud font-extrabold uppercase tracking-wide truncate ${tokens.valueText}`}
-                style={{ fontSize: "calc(21px * var(--hud-scale))" }}
+                style={{
+                  fontSize: isClipSafe
+                    ? "calc(18px * var(--hud-scale))"
+                    : "calc(20px * var(--hud-scale))",
+                }}
               >
                 {poll.question}
               </span>
             </div>
             <span
               className="font-hud font-bold px-2 py-0.5 rounded bg-white/8 text-[#F7B267] shrink-0"
-              style={{ fontSize: "calc(15px * var(--hud-scale))" }}
+              style={{ fontSize: "calc(13px * var(--hud-scale))" }}
             >
               {formatCountdown(poll.endsAt, nowMs)}
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div>
               <div className="flex items-center justify-between text-xs mb-1 gap-2">
                 <span
@@ -646,7 +702,7 @@ export function OverlayHudCanvas({
       style={{ "--hud-scale": hudScale } as React.CSSProperties}
       className={
         isObs
-          ? "fixed inset-0 w-screen h-screen overflow-hidden bg-transparent pointer-events-none select-none"
+          ? "fixed inset-0 w-full h-[100dvh] overflow-hidden bg-transparent pointer-events-none select-none"
           : "relative w-full h-full overflow-hidden select-none"
       }
     >
@@ -654,17 +710,17 @@ export function OverlayHudCanvas({
         <div
           className={
             isObs
-              ? "max-w-[min(92vw,56.25vh)] w-full mx-auto h-full flex flex-col justify-between py-[4vh] px-3"
-              : "max-w-[324px] w-full mx-auto h-full flex flex-col justify-between py-4 px-2"
+              ? "max-w-[min(92vw,56.25vh)] w-full mx-auto h-full flex flex-col justify-between py-[max(10px,2dvh)] px-2.5"
+              : "max-w-[300px] w-full mx-auto h-full flex flex-col justify-between py-2.5 px-2"
           }
         >
-          <div className="flex flex-col items-stretch gap-2.5">
+          <div className="flex flex-col items-stretch gap-1.5">
             {hookBannerCard}
             {storyCard}
             {cashCard}
           </div>
 
-          <div className="flex flex-col items-stretch gap-2.5">
+          <div className="flex flex-col items-stretch gap-1.5">
             {pollCard}
             {deathCard}
             {watermarkBadge && (
