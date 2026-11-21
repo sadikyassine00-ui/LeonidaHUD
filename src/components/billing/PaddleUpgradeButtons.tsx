@@ -5,14 +5,21 @@ import { useRouter } from "next/navigation";
 import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 import { Crown, Loader2, Sparkles } from "lucide-react";
 
+interface UpgradedBillingPayload {
+  plan?: string;
+  planType?: "free" | "lifetime" | "monthly";
+  subscriptionStatus?: string;
+}
+
 interface PaddleUpgradeButtonsProps {
   userId?: string;
   userEmail?: string;
   currentPlan: "free" | "pro";
   autoCheckoutPlan?: "lifetime" | "monthly" | null;
+  justUpgraded?: boolean;
   compact?: boolean;
   showTrustFooter?: boolean;
-  onUpgraded?: () => void;
+  onUpgraded?: (billing?: UpgradedBillingPayload) => void;
 }
 
 export function PaddleUpgradeButtons({
@@ -20,6 +27,7 @@ export function PaddleUpgradeButtons({
   userEmail,
   currentPlan,
   autoCheckoutPlan = null,
+  justUpgraded = false,
   compact = false,
   showTrustFooter = true,
   onUpgraded,
@@ -30,6 +38,7 @@ export function PaddleUpgradeButtons({
   const [activating, setActivating] = useState(false);
   const [activated, setActivated] = useState(currentPlan === "pro");
   const autoOpenedRef = useRef(false);
+  const pollingRef = useRef(false);
 
   const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
   const paddleEnv =
@@ -44,40 +53,52 @@ export function PaddleUpgradeButtons({
     process.env.NEXT_PUBLIC_PADDLE_PRO_MONTHLY_PRICE_ID;
 
   const pollUntilPro = useCallback(async () => {
+    if (pollingRef.current) return;
+    pollingRef.current = true;
     setActivating(true);
     setNotice(null);
 
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      try {
-        const res = await fetch("/api/user/billing-status", {
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const data = (await res.json()) as { plan?: string };
-          if (data.plan === "pro") {
-            setActivated(true);
-            setActivating(false);
-            onUpgraded?.();
-            router.refresh();
-            return;
+    try {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        try {
+          const res = await fetch("/api/user/billing-status", {
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const data = (await res.json()) as UpgradedBillingPayload;
+            if (data.plan === "pro") {
+              setActivated(true);
+              setActivating(false);
+              onUpgraded?.(data);
+              router.refresh();
+              return;
+            }
           }
+        } catch {
+          // Retry next interval
         }
-      } catch {
-        // Retry next interval
+        await new Promise((r) => setTimeout(r, 1200));
       }
-      await new Promise((r) => setTimeout(r, 1000));
-    }
 
-    setActivating(false);
-    setNotice(
-      "Payment received. If your Pro badge has not updated yet, refresh this page in a few seconds."
-    );
-    router.refresh();
+      setActivating(false);
+      setNotice(
+        "Payment received. If your Pro badge has not updated yet, refresh this page in a few seconds."
+      );
+      router.refresh();
+    } finally {
+      pollingRef.current = false;
+    }
   }, [onUpgraded, router]);
 
   useEffect(() => {
     setActivated(currentPlan === "pro");
   }, [currentPlan]);
+
+  useEffect(() => {
+    if (justUpgraded && currentPlan !== "pro") {
+      void pollUntilPro();
+    }
+  }, [justUpgraded, currentPlan, pollUntilPro]);
 
   useEffect(() => {
     if (!clientToken || paddle?.Initialized) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import {
@@ -34,6 +34,7 @@ interface DashboardClientProps {
   };
   hasDatabase: boolean;
   autoCheckoutPlan?: "lifetime" | "monthly" | null;
+  justUpgraded?: boolean;
 }
 
 export function DashboardClient({
@@ -41,9 +42,18 @@ export function DashboardClient({
   user: initialUser,
   hasDatabase,
   autoCheckoutPlan = null,
+  justUpgraded = false,
 }: DashboardClientProps) {
   const [user, setUser] = useState(initialUser);
   const [overlay, setOverlay] = useState<OverlayStateSnapshot>(initialOverlay);
+
+  useEffect(() => {
+    setUser(initialUser);
+  }, [initialUser]);
+
+  useEffect(() => {
+    setOverlay(initialOverlay);
+  }, [initialOverlay]);
   const [twitchChannel, setTwitchChannel] = useState(
     initialOverlay.twitchChannel ?? ""
   );
@@ -649,9 +659,17 @@ export function DashboardClient({
                 userEmail={user.email}
                 currentPlan={user.plan}
                 autoCheckoutPlan={autoCheckoutPlan}
-                onUpgraded={() => {
-                  setUser((prev) => ({ ...prev, plan: "pro" }));
+                justUpgraded={justUpgraded}
+                onUpgraded={(billing) => {
+                  setUser((prev) => ({
+                    ...prev,
+                    plan: "pro",
+                    planType: billing?.planType ?? prev.planType ?? "lifetime",
+                    subscriptionStatus:
+                      billing?.subscriptionStatus ?? prev.subscriptionStatus,
+                  }));
                   setOverlay((prev) => ({ ...prev, plan: "pro" }));
+                  setStatusMessage("Pro Broadcaster unlocked across your dashboard and overlay.");
                 }}
               />
             </section>

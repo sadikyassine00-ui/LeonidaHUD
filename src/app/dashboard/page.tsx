@@ -10,14 +10,14 @@ import { DashboardClient } from "@/components/dashboard/DashboardClient";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage(props: {
-  searchParams: Promise<{ checkout?: string }>;
+  searchParams: Promise<{ checkout?: string; upgraded?: string }>;
 }) {
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     redirect("/signin?callbackUrl=/dashboard");
   }
 
-  const { checkout } = await props.searchParams;
+  const { checkout, upgraded } = await props.searchParams;
   const autoCheckoutPlan =
     checkout === "lifetime" || checkout === "monthly" ? checkout : null;
 
@@ -36,6 +36,7 @@ export default async function DashboardPage(props: {
       user={user}
       hasDatabase={hasDatabaseConfig()}
       autoCheckoutPlan={autoCheckoutPlan}
+      justUpgraded={upgraded === "1"}
     />
   );
 }
