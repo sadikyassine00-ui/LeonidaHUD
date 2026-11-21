@@ -673,27 +673,26 @@ export function OverlayHudCanvas({
           </div>
         </div>
       ) : (
-        <div
-          className="w-full h-full flex flex-col justify-between"
-          style={{
-            padding: isObs ? "clamp(12px, 2.5vw, 36px)" : "20px",
-          }}
-        >
-          {/* Top Row: Top-Left = Story Progress, Top-Right = Net Worth */}
-          <div className="flex justify-between items-start gap-4 w-full">
-            <div className="min-w-0 flex-1 flex justify-start">
-              {storyCard}
-            </div>
-            <div className="min-w-0 flex justify-end">{cashCard}</div>
+        <div className="relative w-full h-full">
+          {/* Top-Left: Story Progress offset below native vitals bars */}
+          <div className="absolute top-[7.5%] left-[2.2%] w-[min(44%,calc(420px*var(--hud-scale)))] min-w-0 flex justify-start">
+            {storyCard}
           </div>
 
-          {/* Bottom Row: Bottom-Left = Wasted/Busted + Watermark, Bottom-Right = Live Poll */}
-          <div className="flex justify-between items-end gap-4 w-full">
-            <div className="min-w-0 flex flex-col items-start gap-2">
-              {deathCard}
-              {watermarkBadge}
-            </div>
-            <div className="min-w-0 flex-1 flex justify-end">{pollCard}</div>
+          {/* Top-Right: Net Worth offset below wanted stars and ammo */}
+          <div className="absolute top-[11%] right-[2.2%] min-w-0 flex justify-end">
+            {cashCard}
+          </div>
+
+          {/* Bottom-Left: Wasted/Busted + Watermark cleared right of minimap */}
+          <div className="absolute bottom-[2.5%] left-[19.5%] min-w-0 flex flex-col items-start gap-2">
+            {deathCard}
+            {watermarkBadge}
+          </div>
+
+          {/* Bottom-Right: Live Chat Poll */}
+          <div className="absolute bottom-[2.5%] right-[2.2%] w-[min(40%,calc(420px*var(--hud-scale)))] min-w-0 flex justify-end">
+            {pollCard}
           </div>
         </div>
       )}
