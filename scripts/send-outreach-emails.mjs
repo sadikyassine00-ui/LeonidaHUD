@@ -5,7 +5,7 @@ import path from "node:path";
 import nodemailer from "nodemailer";
 
 const ROOT_DIR = process.cwd();
-const DEFAULT_CSV_FILE = path.join(ROOT_DIR, "scripts", "console-streamers.csv");
+const DEFAULT_CSV_FILE = path.join(ROOT_DIR, "scripts", "master-leads.csv");
 const HISTORY_FILE = path.join(ROOT_DIR, "scripts", "emailed-history.json");
 
 const DEFAULT_LIMIT = 15;
@@ -101,7 +101,7 @@ Options:
   --dry-run        Preview batch and rendered plain-text emails (default)
   --send           Actually send emails via Gmail SMTP (35-65s random delay)
   --limit <n>      Max recipients per run (default: ${DEFAULT_LIMIT})
-  --csv <path>     Custom CSV path (default: scripts/console-streamers.csv)
+  --csv <path>     Custom CSV path (default: scripts/master-leads.csv)
   -h, --help       Show this help message
 `);
 }

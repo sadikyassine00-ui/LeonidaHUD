@@ -5,7 +5,7 @@ import path from "node:path";
 
 const ROOT_DIR = process.cwd();
 const OUT_DIR = path.join(ROOT_DIR, "scripts", "out");
-const DEFAULT_CSV_FILE = path.join(ROOT_DIR, "scripts", "console-streamers.csv");
+const MASTER_CSV_FILE = path.join(ROOT_DIR, "scripts", "master-leads.csv");
 const HISTORY_FILE = path.join(OUT_DIR, "seen-streamers.json");
 
 const DEFAULT_CATEGORY = "Grand Theft Auto VI";
@@ -13,6 +13,7 @@ const DEFAULT_MIN_VIEWERS = 5;
 const DEFAULT_MAX_VIEWERS = 200;
 const DEFAULT_LANGUAGE = "en";
 const DEFAULT_MAX_PAGES = 100;
+const DEFAULT_WATCH_INTERVAL_MIN = 60;
 
 const CONSOLE_PATTERNS = [
   { label: "PS5", regex: /\bps5/i },
@@ -81,12 +82,15 @@ function parseCliArgs(argv) {
     hasContact: true,
     hasEmail: false,
     noHistory: false,
+    watch: false,
+    intervalMinutes: DEFAULT_WATCH_INTERVAL_MIN,
     reset: false,
     save: null,
     help: false,
   };
 
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
     if (arg === "--help" || arg === "-h") {
       opts.help = true;
     } else if (arg === "--console-only") {
@@ -101,6 +105,15 @@ function parseCliArgs(argv) {
       opts.hasEmail = false;
     } else if (arg === "--no-history") {
       opts.noHistory = true;
+    } else if (arg === "--watch") {
+      opts.watch = true;
+    } else if (arg === "--interval" && argv[i + 1]) {
+      const n = Number(argv[i + 1]);
+      if (Number.isFinite(n) && n >= 1) opts.intervalMinutes = n;
+      i += 1;
+    } else if (arg.startsWith("--interval=")) {
+      const n = Number(arg.slice(11));
+      if (Number.isFinite(n) && n >= 1) opts.intervalMinutes = n;
     } else if (arg === "--reset") {
       opts.reset = true;
     } else if (arg.startsWith("--min-viewers=") || arg.startsWith("--min=")) {
@@ -154,8 +167,10 @@ Options:
   --has-email        Only show leads with a public email found in their channel bio
   --all              Include all non-partner matches even without bio contact info
   --console-only     Only show streams matching PS5, Xbox, or console in title/tags
+  --watch            Keep running and append new leads every --interval minutes
+  --interval <min>   Watch interval in minutes (default: ${DEFAULT_WATCH_INTERVAL_MIN})
   --no-history       Ignore and do not update seen history (inspect full live pool)
-  --reset            Clear seen history and scripts/console-streamers.csv before scanning
+  --reset            Clear seen history and scripts/master-leads.csv before scanning
   --save=csv|json|both  Also save timestamped report(s) to scripts/out/
   -h, --help         Show this help message
 `);
@@ -193,8 +208,8 @@ function clearSeenHistory() {
   if (fs.existsSync(HISTORY_FILE)) {
     fs.unlinkSync(HISTORY_FILE);
   }
-  if (fs.existsSync(DEFAULT_CSV_FILE)) {
-    fs.unlinkSync(DEFAULT_CSV_FILE);
+  if (fs.existsSync(MASTER_CSV_FILE)) {
+    fs.unlinkSync(MASTER_CSV_FILE);
   }
 }
 
@@ -470,52 +485,172 @@ function escapeCsvCell(value) {
   return str;
 }
 
-function appendDefaultCsv(streams) {
-  if (streams.length === 0) return null;
-  fs.mkdirSync(path.dirname(DEFAULT_CSV_FILE), { recursive: true });
+const MASTER_CSV_HEADERS = [
+  "discovered_at",
+  "username",
+  "contact_type",
+  "email",
+  "discord",
+  "viewer_count",
+  "broadcaster_type",
+  "title",
+  "about_url",
+];
 
-  const header = [
-    "username",
-    "email",
-    "discord",
-    "viewer_count",
-    "broadcaster_type",
-    "title",
-    "about_url",
-  ].join(",");
+function parseCsvRecords(rawText) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
 
-  let needsHeader =
-    !fs.existsSync(DEFAULT_CSV_FILE) ||
-    fs.statSync(DEFAULT_CSV_FILE).size === 0;
+  for (let i = 0; i < rawText.length; i += 1) {
+    const ch = rawText[i];
+    const next = rawText[i + 1];
 
-  if (!needsHeader) {
-    const firstLine = fs
-      .readFileSync(DEFAULT_CSV_FILE, "utf8")
-      .split(/\r?\n/, 1)[0]
-      .trim();
-    if (firstLine !== header) {
-      fs.writeFileSync(DEFAULT_CSV_FILE, "", "utf8");
-      needsHeader = true;
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        cell += '"';
+        i += 1;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        cell += ch;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (ch === "\r" && next === "\n") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      i += 1;
+    } else if (ch === "\n" || ch === "\r") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += ch;
     }
   }
 
-  const rows = streams.map((s) =>
-    [
-      s.login,
-      s.emails[0] || "",
-      s.discordLinks[0] || "",
-      s.viewers,
-      s.broadcasterType,
-      s.title,
-      s.aboutUrl,
-    ]
-      .map(escapeCsvCell)
-      .join(",")
-  );
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
 
-  const chunk = (needsHeader ? [header, ...rows] : rows).join("\n") + "\n";
-  fs.appendFileSync(DEFAULT_CSV_FILE, chunk, "utf8");
-  return DEFAULT_CSV_FILE;
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((h) => h.trim().toLowerCase());
+  const records = [];
+  for (let r = 1; r < rows.length; r += 1) {
+    if (rows[r].every((v) => v.trim() === "")) continue;
+    const obj = {};
+    for (let c = 0; c < headers.length; c += 1) {
+      obj[headers[c]] = (rows[r][c] ?? "").trim();
+    }
+    records.push(obj);
+  }
+  return records;
+}
+
+function loadMasterCsvIndex() {
+  const existingUsernames = new Set();
+  const existingEmails = new Set();
+  if (!fs.existsSync(MASTER_CSV_FILE)) {
+    return { existingUsernames, existingEmails, totalRows: 0 };
+  }
+
+  const raw = fs.readFileSync(MASTER_CSV_FILE, "utf8");
+  const records = parseCsvRecords(raw);
+  for (const row of records) {
+    const username = (row.username || "").trim().toLowerCase();
+    const email = (row.email || "").trim().toLowerCase();
+    if (username) existingUsernames.add(username);
+    if (email) existingEmails.add(email);
+  }
+
+  return {
+    existingUsernames,
+    existingEmails,
+    totalRows: records.length,
+  };
+}
+
+function getContactType(emails, discordLinks) {
+  const hasEmail = emails.length > 0;
+  const hasDiscord = discordLinks.length > 0;
+  if (hasEmail && hasDiscord) return "both";
+  if (hasEmail) return "email";
+  if (hasDiscord) return "discord";
+  return "none";
+}
+
+function appendMasterCsv(streams) {
+  const master = loadMasterCsvIndex();
+  const discoveredAt = new Date().toISOString();
+  const freshRows = [];
+  let appendedEmails = 0;
+
+  for (const s of streams) {
+    const login = String(s.login || "").trim().toLowerCase();
+    const email = String(s.emails[0] || "").trim().toLowerCase();
+    const discord = String(s.discordLinks[0] || "").trim();
+
+    if (!login || master.existingUsernames.has(login)) continue;
+    if (email && master.existingEmails.has(email)) continue;
+
+    master.existingUsernames.add(login);
+    if (email) {
+      master.existingEmails.add(email);
+      appendedEmails += 1;
+    }
+
+    freshRows.push(
+      [
+        discoveredAt,
+        login,
+        getContactType(s.emails, s.discordLinks),
+        email,
+        discord,
+        s.viewers,
+        s.broadcasterType,
+        s.title,
+        s.aboutUrl,
+      ]
+        .map(escapeCsvCell)
+        .join(",")
+    );
+  }
+
+  if (freshRows.length === 0) {
+    return {
+      filePath: MASTER_CSV_FILE,
+      appendedCount: 0,
+      appendedEmails: 0,
+      totalRows: master.totalRows,
+    };
+  }
+
+  fs.mkdirSync(path.dirname(MASTER_CSV_FILE), { recursive: true });
+  const needsHeader =
+    !fs.existsSync(MASTER_CSV_FILE) ||
+    fs.statSync(MASTER_CSV_FILE).size === 0;
+  const header = MASTER_CSV_HEADERS.join(",");
+  const chunk = (needsHeader ? [header, ...freshRows] : freshRows).join("\n") + "\n";
+  fs.appendFileSync(MASTER_CSV_FILE, chunk, "utf8");
+
+  return {
+    filePath: MASTER_CSV_FILE,
+    appendedCount: freshRows.length,
+    appendedEmails,
+    totalRows: master.totalRows + freshRows.length,
+  };
 }
 
 function saveReport(streams, saveMode, meta) {
@@ -591,27 +726,31 @@ function saveReport(streams, saveMode, meta) {
   return written;
 }
 
-async function main() {
-  const opts = parseCliArgs(process.argv.slice(2));
-  if (opts.help) {
-    printHelp();
-    return;
-  }
-
-  if (opts.reset) {
-    clearSeenHistory();
-    console.log("Cleared previously surfaced streamer history.");
-  }
-
+async function runScanOnce(opts, credentials, quietWatch = false) {
   const seenHistory = opts.noHistory ? new Set() : loadSeenHistory();
-  const { clientId, clientSecret } = resolveTwitchCredentials();
-  const token = await getAppAccessToken(clientId, clientSecret);
-  const category = await resolveCategory(clientId, token, opts.category);
+  const masterIndex = opts.noHistory
+    ? { existingUsernames: new Set(), existingEmails: new Set(), totalRows: 0 }
+    : loadMasterCsvIndex();
+
+  const token = await getAppAccessToken(
+    credentials.clientId,
+    credentials.clientSecret
+  );
+  const category = await resolveCategory(
+    credentials.clientId,
+    token,
+    opts.category
+  );
 
   if (!category) {
     console.log(`Category "${opts.category}" was not found on Twitch.`);
     return;
   }
+
+  const combinedSeen = new Set([
+    ...seenHistory,
+    ...masterIndex.existingUsernames,
+  ]);
 
   const {
     streams,
@@ -620,35 +759,61 @@ async function main() {
     skippedDuplicates,
     excludedPartners,
   } = await fetchCandidateStreams(
-    clientId,
+    credentials.clientId,
     token,
     category.id,
     opts,
-    seenHistory
+    combinedSeen
   );
 
-  const consoleCount = streams.filter((s) => s.isConsole).length;
-  const emailCount = streams.filter((s) => s.emails.length > 0).length;
-  const discordCount = streams.filter((s) => s.discordLinks.length > 0).length;
+  const finalStreams = opts.noHistory
+    ? streams
+    : streams.filter((s) => {
+        const email = String(s.emails[0] || "").trim().toLowerCase();
+        return !email || !masterIndex.existingEmails.has(email);
+      });
+
+  const consoleCount = finalStreams.filter((s) => s.isConsole).length;
+  const emailCount = finalStreams.filter((s) => s.emails.length > 0).length;
+  const discordCount = finalStreams.filter((s) => s.discordLinks.length > 0).length;
+
+  const appendResult = appendMasterCsv(finalStreams);
+
+  if (!opts.noHistory && finalStreams.length > 0) {
+    for (const s of finalStreams) {
+      seenHistory.add(String(s.login).toLowerCase());
+    }
+    saveSeenHistory(seenHistory);
+  }
+
+  if (quietWatch) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    console.log(
+      `[${hh}:${mm}] Added ${appendResult.appendedCount} new lead(s) (${appendResult.appendedEmails} email(s)) | Total master list: ${appendResult.totalRows}`
+    );
+    return;
+  }
 
   console.log("");
   console.log(
     `Twitch Outreach Scan | Category: ${category.name} (ID ${category.id}) | Lang: ${opts.lang} | Viewers: ${opts.min}-${opts.max}`
   );
   console.log(
-    `Scanned ${pagesScanned} page(s) | Output leads: ${streams.length}${totalMatched > streams.length ? ` of ${totalMatched}` : ""} (${emailCount} with email, ${discordCount} with Discord, ${consoleCount} tagged console)`
+    `Scanned ${pagesScanned} page(s) | Output leads: ${finalStreams.length}${totalMatched > finalStreams.length ? ` of ${totalMatched}` : ""} (${emailCount} with email, ${discordCount} with Discord, ${consoleCount} tagged console)`
   );
   console.log(
     `Filtered out: ${excludedPartners} partner(s), ${opts.noHistory ? "history bypassed (--no-history)" : `${skippedDuplicates} previously seen`}`
   );
   console.log("-".repeat(88));
 
-  if (streams.length === 0) {
+  if (finalStreams.length === 0) {
     console.log(
-      "No fresh streams match your filters right now. Use --reset to clear history or adjust flags."
+      `No fresh streams match your filters right now. Total master list: ${appendResult.totalRows}`
     );
   } else {
-    streams.forEach((s, idx) => {
+    finalStreams.forEach((s, idx) => {
       const rank = String(idx + 1).padStart(2, "0");
       const typeTag =
         s.broadcasterType === "affiliate" ? " [AFFILIATE]" : "";
@@ -671,24 +836,14 @@ async function main() {
       }
     });
 
-    if (!opts.noHistory) {
-      for (const s of streams) {
-        seenHistory.add(String(s.login).toLowerCase());
-      }
-      saveSeenHistory(seenHistory);
-    }
-
-    const csvFile = appendDefaultCsv(streams);
-    if (csvFile) {
-      console.log("-".repeat(88));
-      console.log(
-        `Appended ${streams.length} lead(s) to ${path.relative(ROOT_DIR, csvFile)}`
-      );
-    }
+    console.log("-".repeat(88));
+    console.log(
+      `Appended ${appendResult.appendedCount} new lead(s) to ${path.relative(ROOT_DIR, appendResult.filePath)} | Total master list: ${appendResult.totalRows}`
+    );
   }
 
   if (opts.save) {
-    const files = saveReport(streams, opts.save, {
+    const files = saveReport(finalStreams, opts.save, {
       category: category.name,
       categoryId: category.id,
       language: opts.lang,
@@ -701,6 +856,57 @@ async function main() {
     for (const file of files) {
       console.log(`Saved report: ${path.relative(ROOT_DIR, file)}`);
     }
+  }
+}
+
+async function main() {
+  const opts = parseCliArgs(process.argv.slice(2));
+  if (opts.help) {
+    printHelp();
+    return;
+  }
+
+  if (opts.reset) {
+    clearSeenHistory();
+    console.log("Cleared previously surfaced streamer history and master CSV.");
+  }
+
+  const credentials = resolveTwitchCredentials();
+
+  if (!opts.watch) {
+    await runScanOnce(opts, credentials, false);
+    return;
+  }
+
+  let running = true;
+  const stop = () => {
+    running = false;
+    console.log("\nStopping watch mode...");
+    process.exit(0);
+  };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+
+  console.log(
+    `Watch mode active (interval: ${opts.intervalMinutes} min). Writing new leads to scripts/master-leads.csv...`
+  );
+
+  while (running) {
+    try {
+      await runScanOnce(opts, credentials, true);
+    } catch (err) {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      console.error(
+        `[${hh}:${mm}] Scan error:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+    if (!running) break;
+    await new Promise((resolve) =>
+      setTimeout(resolve, opts.intervalMinutes * 60 * 1000)
+    );
   }
 }
 
