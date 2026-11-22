@@ -131,11 +131,6 @@ export default async function HomePage() {
         {/* Hero Section */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
           <div className="pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center justify-center text-center max-w-4xl mx-auto space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#131720] border border-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#F7B267]">
-              <span className="w-2 h-2 rounded-full bg-[#F25C54]" />
-              <span>Ready for the November 19, 2026 Console Launch</span>
-            </div>
-
             <h1 className="font-hud font-extrabold text-4xl sm:text-5xl lg:text-[3.5rem] uppercase tracking-tight leading-[0.98] text-[#F4F5F7]">
               Console Streamers Don&apos;t Get PC Mods. Run Live Story &amp; Cash
               HUDs Anyway.
