@@ -432,6 +432,7 @@ function buildProviders(): Provider[] {
       Discord({
         clientId: process.env.AUTH_DISCORD_ID,
         clientSecret: process.env.AUTH_DISCORD_SECRET,
+        issuer: "https://discord.com",
         allowDangerousEmailAccountLinking: true,
         checks: ["state"],
         client: { token_endpoint_auth_method: "client_secret_post" },
