@@ -9,10 +9,10 @@ const DEFAULT_CSV_FILE = path.join(ROOT_DIR, "scripts", "console-streamers.csv")
 const HISTORY_FILE = path.join(OUT_DIR, "seen-streamers.json");
 
 const DEFAULT_CATEGORY = "Grand Theft Auto VI";
-const DEFAULT_MIN_VIEWERS = 15;
-const DEFAULT_MAX_VIEWERS = 150;
+const DEFAULT_MIN_VIEWERS = 5;
+const DEFAULT_MAX_VIEWERS = 200;
 const DEFAULT_LANGUAGE = "en";
-const DEFAULT_MAX_PAGES = 25;
+const DEFAULT_MAX_PAGES = 100;
 
 const CONSOLE_PATTERNS = [
   { label: "PS5", regex: /\bps5/i },
@@ -76,8 +76,11 @@ function parseCliArgs(argv) {
     lang: DEFAULT_LANGUAGE,
     category: DEFAULT_CATEGORY,
     maxPages: DEFAULT_MAX_PAGES,
+    maxLeads: Infinity,
     consoleOnly: false,
+    hasContact: true,
     hasEmail: false,
+    noHistory: false,
     reset: false,
     save: null,
     help: false,
@@ -90,14 +93,27 @@ function parseCliArgs(argv) {
       opts.consoleOnly = true;
     } else if (arg === "--has-email") {
       opts.hasEmail = true;
+    } else if (arg === "--has-contact") {
+      opts.hasContact = true;
+      opts.hasEmail = false;
+    } else if (arg === "--all") {
+      opts.hasContact = false;
+      opts.hasEmail = false;
+    } else if (arg === "--no-history") {
+      opts.noHistory = true;
     } else if (arg === "--reset") {
       opts.reset = true;
-    } else if (arg.startsWith("--min=")) {
-      const n = Number(arg.slice(6));
+    } else if (arg.startsWith("--min-viewers=") || arg.startsWith("--min=")) {
+      const val = arg.startsWith("--min-viewers=") ? arg.slice(14) : arg.slice(6);
+      const n = Number(val);
       if (Number.isFinite(n) && n >= 0) opts.min = Math.floor(n);
-    } else if (arg.startsWith("--max=")) {
-      const n = Number(arg.slice(6));
+    } else if (arg.startsWith("--max-viewers=") || arg.startsWith("--max=")) {
+      const val = arg.startsWith("--max-viewers=") ? arg.slice(14) : arg.slice(6);
+      const n = Number(val);
       if (Number.isFinite(n) && n >= 0) opts.max = Math.floor(n);
+    } else if (arg.startsWith("--max-leads=")) {
+      const n = Number(arg.slice(12));
+      if (Number.isFinite(n) && n >= 1) opts.maxLeads = Math.floor(n);
     } else if (arg.startsWith("--lang=")) {
       opts.lang = arg.slice(7).trim() || DEFAULT_LANGUAGE;
     } else if (arg.startsWith("--category=")) {
@@ -128,13 +144,17 @@ Usage:
   npm run find-streamers [-- options]
 
 Options:
-  --min=<n>          Minimum concurrent viewers (default: ${DEFAULT_MIN_VIEWERS})
-  --max=<n>          Maximum concurrent viewers (default: ${DEFAULT_MAX_VIEWERS})
+  --min-viewers=<n>  Minimum concurrent viewers (default: ${DEFAULT_MIN_VIEWERS}, alias: --min)
+  --max-viewers=<n>  Maximum concurrent viewers (default: ${DEFAULT_MAX_VIEWERS}, alias: --max)
+  --max-leads=<n>    Maximum leads to output/export (default: all matches)
   --lang=<code>      Stream language filter (default: ${DEFAULT_LANGUAGE})
   --category=<name>  Twitch category name (default: "${DEFAULT_CATEGORY}")
   --max-pages=<n>    Max Helix pages of 100 streams to scan (default: ${DEFAULT_MAX_PAGES})
-  --console-only     Only show streams matching PS5, Xbox, or console in title/tags
+  --has-contact      Require bio email OR Discord link (default)
   --has-email        Only show leads with a public email found in their channel bio
+  --all              Include all non-partner matches even without bio contact info
+  --console-only     Only show streams matching PS5, Xbox, or console in title/tags
+  --no-history       Ignore and do not update seen history (inspect full live pool)
   --reset            Clear seen history and scripts/console-streamers.csv before scanning
   --save=csv|json|both  Also save timestamped report(s) to scripts/out/
   -h, --help         Show this help message
@@ -403,8 +423,10 @@ async function fetchCandidateStreams(clientId, token, gameId, opts, seenHistory)
       .trim();
     const { emails, discordLinks } = extractBioContacts(profile?.description);
 
-    if (opts.hasEmail && emails.length === 0) {
-      continue;
+    if (opts.hasEmail) {
+      if (emails.length === 0) continue;
+    } else if (opts.hasContact) {
+      if (emails.length === 0 && discordLinks.length === 0) continue;
     }
 
     enriched.push({
@@ -427,8 +449,13 @@ async function fetchCandidateStreams(clientId, token, gameId, opts, seenHistory)
     return b.viewers - a.viewers;
   });
 
+  const finalStreams = Number.isFinite(opts.maxLeads)
+    ? enriched.slice(0, opts.maxLeads)
+    : enriched;
+
   return {
-    streams: enriched,
+    streams: finalStreams,
+    totalMatched: enriched.length,
     pagesScanned,
     skippedDuplicates,
     excludedPartners,
@@ -446,23 +473,37 @@ function escapeCsvCell(value) {
 function appendDefaultCsv(streams) {
   if (streams.length === 0) return null;
   fs.mkdirSync(path.dirname(DEFAULT_CSV_FILE), { recursive: true });
-  const needsHeader =
-    !fs.existsSync(DEFAULT_CSV_FILE) ||
-    fs.statSync(DEFAULT_CSV_FILE).size === 0;
 
   const header = [
     "username",
     "email",
+    "discord",
     "viewer_count",
     "broadcaster_type",
     "title",
     "about_url",
   ].join(",");
 
+  let needsHeader =
+    !fs.existsSync(DEFAULT_CSV_FILE) ||
+    fs.statSync(DEFAULT_CSV_FILE).size === 0;
+
+  if (!needsHeader) {
+    const firstLine = fs
+      .readFileSync(DEFAULT_CSV_FILE, "utf8")
+      .split(/\r?\n/, 1)[0]
+      .trim();
+    if (firstLine !== header) {
+      fs.writeFileSync(DEFAULT_CSV_FILE, "", "utf8");
+      needsHeader = true;
+    }
+  }
+
   const rows = streams.map((s) =>
     [
       s.login,
       s.emails[0] || "",
+      s.discordLinks[0] || "",
       s.viewers,
       s.broadcasterType,
       s.title,
@@ -562,7 +603,7 @@ async function main() {
     console.log("Cleared previously surfaced streamer history.");
   }
 
-  const seenHistory = loadSeenHistory();
+  const seenHistory = opts.noHistory ? new Set() : loadSeenHistory();
   const { clientId, clientSecret } = resolveTwitchCredentials();
   const token = await getAppAccessToken(clientId, clientSecret);
   const category = await resolveCategory(clientId, token, opts.category);
@@ -572,14 +613,19 @@ async function main() {
     return;
   }
 
-  const { streams, pagesScanned, skippedDuplicates, excludedPartners } =
-    await fetchCandidateStreams(
-      clientId,
-      token,
-      category.id,
-      opts,
-      seenHistory
-    );
+  const {
+    streams,
+    totalMatched,
+    pagesScanned,
+    skippedDuplicates,
+    excludedPartners,
+  } = await fetchCandidateStreams(
+    clientId,
+    token,
+    category.id,
+    opts,
+    seenHistory
+  );
 
   const consoleCount = streams.filter((s) => s.isConsole).length;
   const emailCount = streams.filter((s) => s.emails.length > 0).length;
@@ -590,10 +636,10 @@ async function main() {
     `Twitch Outreach Scan | Category: ${category.name} (ID ${category.id}) | Lang: ${opts.lang} | Viewers: ${opts.min}-${opts.max}`
   );
   console.log(
-    `Scanned ${pagesScanned} page(s) | Fresh leads: ${streams.length} (${consoleCount} console, ${emailCount} with email, ${discordCount} with Discord)`
+    `Scanned ${pagesScanned} page(s) | Output leads: ${streams.length}${totalMatched > streams.length ? ` of ${totalMatched}` : ""} (${emailCount} with email, ${discordCount} with Discord, ${consoleCount} tagged console)`
   );
   console.log(
-    `Filtered out: ${excludedPartners} partner(s), ${skippedDuplicates} previously seen`
+    `Filtered out: ${excludedPartners} partner(s), ${opts.noHistory ? "history bypassed (--no-history)" : `${skippedDuplicates} previously seen`}`
   );
   console.log("-".repeat(88));
 
@@ -625,10 +671,12 @@ async function main() {
       }
     });
 
-    for (const s of streams) {
-      seenHistory.add(String(s.login).toLowerCase());
+    if (!opts.noHistory) {
+      for (const s of streams) {
+        seenHistory.add(String(s.login).toLowerCase());
+      }
+      saveSeenHistory(seenHistory);
     }
-    saveSeenHistory(seenHistory);
 
     const csvFile = appendDefaultCsv(streams);
     if (csvFile) {
