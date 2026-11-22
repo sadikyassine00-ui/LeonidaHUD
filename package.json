@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "find-streamers": "node scripts/find-twitch-streamers.mjs",
-    "outreach:twitch": "node scripts/find-twitch-streamers.mjs"
+    "outreach:twitch": "node scripts/find-twitch-streamers.mjs",
+    "send-invites": "node scripts/send-outreach-emails.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
