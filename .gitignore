@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 /scripts/out/
+/scripts/console-streamers.csv
 
 # debug
 npm-debug.log*

@@ -5,6 +5,7 @@ import path from "node:path";
 
 const ROOT_DIR = process.cwd();
 const OUT_DIR = path.join(ROOT_DIR, "scripts", "out");
+const DEFAULT_CSV_FILE = path.join(ROOT_DIR, "scripts", "console-streamers.csv");
 const HISTORY_FILE = path.join(OUT_DIR, "seen-streamers.json");
 
 const DEFAULT_CATEGORY = "Grand Theft Auto VI";
@@ -124,7 +125,7 @@ function printHelp() {
 Leonida HUD - Twitch Beta Outreach Finder
 
 Usage:
-  npm run outreach:twitch [-- options]
+  npm run find-streamers [-- options]
 
 Options:
   --min=<n>          Minimum concurrent viewers (default: ${DEFAULT_MIN_VIEWERS})
@@ -134,8 +135,8 @@ Options:
   --max-pages=<n>    Max Helix pages of 100 streams to scan (default: ${DEFAULT_MAX_PAGES})
   --console-only     Only show streams matching PS5, Xbox, or console in title/tags
   --has-email        Only show leads with a public email found in their channel bio
-  --reset            Clear previously surfaced streamer history before scanning
-  --save=csv|json|both  Save gitignored report to scripts/out/
+  --reset            Clear seen history and scripts/console-streamers.csv before scanning
+  --save=csv|json|both  Also save timestamped report(s) to scripts/out/
   -h, --help         Show this help message
 `);
 }
@@ -171,6 +172,9 @@ function saveSeenHistory(seenSet) {
 function clearSeenHistory() {
   if (fs.existsSync(HISTORY_FILE)) {
     fs.unlinkSync(HISTORY_FILE);
+  }
+  if (fs.existsSync(DEFAULT_CSV_FILE)) {
+    fs.unlinkSync(DEFAULT_CSV_FILE);
   }
 }
 
@@ -272,7 +276,12 @@ function extractBioContacts(description) {
   const emails = Array.from(
     new Set(
       rawEmails
-        .map((e) => e.replace(/[.,;:!?)]+$/, "").toLowerCase())
+        .map((e) =>
+          e
+            .replace(/^[^a-zA-Z0-9]+/, "")
+            .replace(/[.,;:!?)]+$/, "")
+            .toLowerCase()
+        )
         .filter((e) => e.includes(".") && !e.endsWith(".png") && !e.endsWith(".jpg"))
     )
   );
@@ -434,6 +443,40 @@ function escapeCsvCell(value) {
   return str;
 }
 
+function appendDefaultCsv(streams) {
+  if (streams.length === 0) return null;
+  fs.mkdirSync(path.dirname(DEFAULT_CSV_FILE), { recursive: true });
+  const needsHeader =
+    !fs.existsSync(DEFAULT_CSV_FILE) ||
+    fs.statSync(DEFAULT_CSV_FILE).size === 0;
+
+  const header = [
+    "username",
+    "email",
+    "viewer_count",
+    "broadcaster_type",
+    "title",
+    "about_url",
+  ].join(",");
+
+  const rows = streams.map((s) =>
+    [
+      s.login,
+      s.emails[0] || "",
+      s.viewers,
+      s.broadcasterType,
+      s.title,
+      s.aboutUrl,
+    ]
+      .map(escapeCsvCell)
+      .join(",")
+  );
+
+  const chunk = (needsHeader ? [header, ...rows] : rows).join("\n") + "\n";
+  fs.appendFileSync(DEFAULT_CSV_FILE, chunk, "utf8");
+  return DEFAULT_CSV_FILE;
+}
+
 function saveReport(streams, saveMode, meta) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const stamp = new Date()
@@ -586,6 +629,14 @@ async function main() {
       seenHistory.add(String(s.login).toLowerCase());
     }
     saveSeenHistory(seenHistory);
+
+    const csvFile = appendDefaultCsv(streams);
+    if (csvFile) {
+      console.log("-".repeat(88));
+      console.log(
+        `Appended ${streams.length} lead(s) to ${path.relative(ROOT_DIR, csvFile)}`
+      );
+    }
   }
 
   if (opts.save) {
