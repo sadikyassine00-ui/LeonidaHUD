@@ -8,9 +8,9 @@ const ROOT_DIR = process.cwd();
 const DEFAULT_CSV_FILE = path.join(ROOT_DIR, "scripts", "master-leads.csv");
 const HISTORY_FILE = path.join(ROOT_DIR, "scripts", "emailed-history.json");
 
-const DEFAULT_LIMIT = 15;
+const DEFAULT_PER_ACCOUNT = 15;
 const MIN_DELAY_MS = 35_000;
-const MAX_DELAY_MS = 65_000;
+const MAX_DELAY_MS = 60_000;
 
 const EMAIL_SUBJECT = "quick question about your GTA 6 stream";
 
@@ -36,30 +36,69 @@ function loadEnvFile(filePath) {
   return out;
 }
 
-function resolveMailerCredentials() {
+function resolveSenderPool() {
   const localEnv = {
     ...loadEnvFile(path.join(ROOT_DIR, ".env")),
     ...loadEnvFile(path.join(ROOT_DIR, ".env.local")),
     ...process.env,
   };
 
-  const user = (localEnv.OUTREACH_EMAIL || "").trim();
-  const pass = (localEnv.OUTREACH_APP_PASSWORD || "").replace(/\s+/g, "");
+  const suffixes = new Set();
+  for (const key of Object.keys(localEnv)) {
+    const emailMatch = key.match(/^OUTREACH_EMAIL(.*)$/);
+    if (emailMatch) suffixes.add(emailMatch[1]);
+    const passMatch = key.match(/^OUTREACH_APP_PASSWORD(.*)$/);
+    if (passMatch) suffixes.add(passMatch[1]);
+  }
 
-  if (!user || !pass) {
+  const orderedSuffixes = Array.from(suffixes).sort((a, b) => {
+    if (a === "") return -1;
+    if (b === "") return 1;
+    return a.localeCompare(b, undefined, { numeric: true });
+  });
+
+  const pool = [];
+  const seenUsers = new Set();
+
+  for (const suffix of orderedSuffixes) {
+    const emailKey = `OUTREACH_EMAIL${suffix}`;
+    const passKey = `OUTREACH_APP_PASSWORD${suffix}`;
+    const user = (localEnv[emailKey] || "").trim().toLowerCase();
+    const pass = (localEnv[passKey] || "").replace(/\s+/g, "");
+
+    if (!user || !pass) {
+      if (user || pass) {
+        console.warn(
+          `Skipping incomplete sender pair (${emailKey} / ${passKey}).`
+        );
+      }
+      continue;
+    }
+
+    if (seenUsers.has(user)) continue;
+    seenUsers.add(user);
+    pool.push({
+      label: suffix ? `Account ${suffix.replace(/^_/, "")}` : "Account 1",
+      user,
+      pass,
+    });
+  }
+
+  if (pool.length === 0) {
     console.error(
-      "Missing outreach credentials. Set OUTREACH_EMAIL and OUTREACH_APP_PASSWORD in .env.local."
+      "No valid outreach sender pairs found. Set OUTREACH_EMAIL and OUTREACH_APP_PASSWORD in .env.local."
     );
     process.exit(1);
   }
 
-  return { user, pass };
+  return pool;
 }
 
 function parseCliArgs(argv) {
   const opts = {
     csvPath: DEFAULT_CSV_FILE,
-    limit: DEFAULT_LIMIT,
+    perAccount: DEFAULT_PER_ACCOUNT,
+    limit: Infinity,
     send: false,
     help: false,
   };
@@ -72,6 +111,13 @@ function parseCliArgs(argv) {
       opts.send = true;
     } else if (arg === "--dry-run") {
       opts.send = false;
+    } else if (arg === "--per-account" && argv[i + 1]) {
+      const n = Number(argv[i + 1]);
+      if (Number.isFinite(n) && n >= 1) opts.perAccount = Math.floor(n);
+      i += 1;
+    } else if (arg.startsWith("--per-account=")) {
+      const n = Number(arg.slice(14));
+      if (Number.isFinite(n) && n >= 1) opts.perAccount = Math.floor(n);
     } else if (arg === "--limit" && argv[i + 1]) {
       const n = Number(argv[i + 1]);
       if (Number.isFinite(n) && n >= 1) opts.limit = Math.floor(n);
@@ -92,17 +138,18 @@ function parseCliArgs(argv) {
 
 function printHelp() {
   console.log(`
-Leonida HUD - Safe Plain-Text Outreach Mailer
+Leonida HUD - Multi-Inbox Plain-Text Outreach Mailer
 
 Usage:
   npm run send-invites [-- options]
 
 Options:
-  --dry-run        Preview batch and rendered plain-text emails (default)
-  --send           Actually send emails via Gmail SMTP (35-65s random delay)
-  --limit <n>      Max recipients per run (default: ${DEFAULT_LIMIT})
-  --csv <path>     Custom CSV path (default: scripts/master-leads.csv)
-  -h, --help       Show this help message
+  --dry-run            Preview batch and sender rotation (default)
+  --send               Send live via Gmail SMTP (35-60s random delay)
+  --per-account <n>    Daily UTC cap per Gmail inbox (default: ${DEFAULT_PER_ACCOUNT})
+  --limit <n>          Optional total cap for this run (default: all remaining daily quota)
+  --csv <path>         Custom CSV path (default: scripts/master-leads.csv)
+  -h, --help           Show this help message
 `);
 }
 
@@ -201,6 +248,65 @@ function saveEmailedHistory(history) {
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(payload, null, 2), "utf8");
 }
 
+function getTodayUtcDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function countSentTodayBySender(history, senderPool) {
+  const todayUtc = getTodayUtcDate();
+  const counts = new Map(senderPool.map((s) => [s.user, 0]));
+  const fallbackSender = senderPool[0]?.user || "";
+
+  for (const record of Object.values(history.sent)) {
+    if (!record || typeof record !== "object") continue;
+    const sentAt = String(record.sent_at || record.sentAt || "");
+    if (!sentAt.startsWith(todayUtc)) continue;
+
+    const sentFrom = String(record.sent_from || fallbackSender)
+      .trim()
+      .toLowerCase();
+    if (counts.has(sentFrom)) {
+      counts.set(sentFrom, (counts.get(sentFrom) || 0) + 1);
+    }
+  }
+
+  return { todayUtc, counts };
+}
+
+function buildRotatedAssignments(candidates, senderPool, countsToday, perAccount, maxTotal) {
+  const remaining = new Map(
+    senderPool.map((s) => [
+      s.user,
+      Math.max(0, perAccount - (countsToday.get(s.user) || 0)),
+    ])
+  );
+
+  const assignments = [];
+  let senderCursor = 0;
+
+  for (const candidate of candidates) {
+    if (assignments.length >= maxTotal) break;
+
+    let assignedSender = null;
+    for (let tried = 0; tried < senderPool.length; tried += 1) {
+      const idx = (senderCursor + tried) % senderPool.length;
+      const sender = senderPool[idx];
+      const left = remaining.get(sender.user) || 0;
+      if (left > 0) {
+        assignedSender = sender;
+        remaining.set(sender.user, left - 1);
+        senderCursor = (idx + 1) % senderPool.length;
+        break;
+      }
+    }
+
+    if (!assignedSender) break;
+    assignments.push({ recipient: candidate, sender: assignedSender });
+  }
+
+  return assignments;
+}
+
 function renderEmailText(username) {
   const cleanName = String(username || "").trim();
   if (!cleanName) {
@@ -208,15 +314,18 @@ function renderEmailText(username) {
   }
 
   const body = [
-    `yo ${cleanName}, saw your GTA 6 stream on Twitch. i built a lightweight OBS browser overlay for console streamers so you can tap Wasted, Busted, and 9:16 TikTok-safe counters straight from your phone.`,
+    `yo ${cleanName}, saw your GTA 6 stream on Twitch. i built a lightweight OBS overlay for console streamers so you can tap Wasted, Busted, and story % counters straight from your phone.`,
     "",
-    "i'm looking for 5 console streamers to test it out this week and tell me what feels clunky. happy to unlock full access on my end at no cost if you want to try it on stream.",
+    "i'm unlocking full access free for 5 streamers this week to test it on stream and tell me what feels clunky.",
     "",
-    "want me to send it over?",
+    "want me to send the link over?",
   ].join("\n");
 
   if (/\{username\}/i.test(body) || /\{username\}/i.test(EMAIL_SUBJECT)) {
     throw new Error("Template placeholder {username} was not replaced");
+  }
+  if (/[\u2014\u2013]/.test(body) || /[\u2014\u2013]/.test(EMAIL_SUBJECT)) {
+    throw new Error("Outreach template must not contain em/en dashes");
   }
   if (/(https?:\/\/|www\.)/i.test(body)) {
     throw new Error("Plain-text outreach body must not contain URLs");
@@ -242,7 +351,7 @@ async function main() {
     return;
   }
 
-  const { user, pass } = resolveMailerCredentials();
+  const senderPool = resolveSenderPool();
 
   if (!fs.existsSync(opts.csvPath)) {
     console.error(
@@ -254,6 +363,10 @@ async function main() {
   const rawCsv = fs.readFileSync(opts.csvPath, "utf8");
   const rows = parseCsv(rawCsv);
   const history = loadEmailedHistory();
+  const { todayUtc, counts: countsToday } = countSentTodayBySender(
+    history,
+    senderPool
+  );
 
   const seenInCsv = new Set();
   const candidates = [];
@@ -287,74 +400,98 @@ async function main() {
     });
   }
 
-  const batch = candidates.slice(0, opts.limit);
+  const assignments = buildRotatedAssignments(
+    candidates,
+    senderPool,
+    countsToday,
+    opts.perAccount,
+    opts.limit
+  );
 
   console.log("");
   console.log(
-    `Outreach Mailer | Mode: ${opts.send ? "LIVE SEND" : "DRY RUN (preview only)"} | From: ${user}`
+    `Outreach Mailer | Mode: ${opts.send ? "LIVE SEND" : "DRY RUN (preview only)"} | Senders: ${senderPool.length} | Date (UTC): ${todayUtc}`
   );
+  for (const s of senderPool) {
+    const used = countsToday.get(s.user) || 0;
+    const left = Math.max(0, opts.perAccount - used);
+    console.log(
+      `  - ${s.label}: ${s.user} | Sent today: ${used}/${opts.perAccount} (${left} remaining)`
+    );
+  }
   console.log(
     `CSV rows: ${rows.length} | Skipped (no email: ${skippedNoEmail}, dup in CSV: ${skippedDuplicateCsv}, already emailed: ${skippedAlreadyEmailed})`
   );
   console.log(
-    `Eligible leads: ${candidates.length} | Batch cap: ${opts.limit} | Queued this run: ${batch.length}`
+    `Eligible leads: ${candidates.length} | Queued this run: ${assignments.length}`
   );
   console.log("-".repeat(80));
 
-  if (batch.length === 0) {
-    console.log("No new recipients to message.");
+  if (assignments.length === 0) {
+    console.log(
+      "No emails queued (either no fresh email leads or daily per-account caps reached)."
+    );
     return;
   }
 
   if (!opts.send) {
-    batch.forEach((recipient, idx) => {
+    assignments.forEach(({ recipient, sender }, idx) => {
       const body = renderEmailText(recipient.username);
       console.log(
-        `[${idx + 1}/${batch.length}] To: ${recipient.email} (Twitch: ${recipient.username})`
+        `[${idx + 1}/${assignments.length}] From: ${sender.user} (${sender.label}) -> To: ${recipient.email} (Twitch: ${recipient.username})`
       );
       console.log(`Subject: ${EMAIL_SUBJECT}`);
       console.log(body);
       console.log("-".repeat(80));
     });
     console.log(
-      `Dry run complete. Re-run with "npm run send-invites -- --send" to send these ${batch.length} email(s).`
+      `Dry run complete. Re-run with "npm run send-invites -- --send" to send these ${assignments.length} email(s).`
     );
     return;
   }
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
-  });
-
-  await transporter.verify();
-  console.log("Gmail SMTP connection verified. Starting staggered sends...\n");
+  const transports = new Map();
+  for (const { sender } of assignments) {
+    if (!transports.has(sender.user)) {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: sender.user, pass: sender.pass },
+      });
+      await transporter.verify();
+      console.log(`Verified Gmail SMTP for ${sender.user} (${sender.label})`);
+      transports.set(sender.user, transporter);
+    }
+  }
+  console.log("Starting staggered multi-inbox sends...\n");
 
   let sentCount = 0;
-  for (let i = 0; i < batch.length; i += 1) {
-    const recipient = batch[i];
+  for (let i = 0; i < assignments.length; i += 1) {
+    const { recipient, sender } = assignments[i];
+    const transporter = transports.get(sender.user);
     const text = renderEmailText(recipient.username);
 
     const info = await transporter.sendMail({
-      from: user,
+      from: sender.user,
       to: recipient.email,
       subject: EMAIL_SUBJECT,
       text,
     });
 
     history.sent[recipient.email] = {
+      email: recipient.email,
       username: recipient.username,
-      sentAt: new Date().toISOString(),
+      sent_from: sender.user,
+      sent_at: new Date().toISOString(),
       messageId: info.messageId || null,
     };
     saveEmailedHistory(history);
     sentCount += 1;
 
     console.log(
-      `[${sentCount}/${batch.length}] Sent to ${recipient.email} (${recipient.username}) | id=${info.messageId || "ok"}`
+      `[${sentCount}/${assignments.length}] Sent via ${sender.user} -> ${recipient.email} (${recipient.username}) | id=${info.messageId || "ok"}`
     );
 
-    if (i < batch.length - 1) {
+    if (i < assignments.length - 1) {
       const waitMs = randomDelayMs();
       const waitSec = Math.round(waitMs / 1000);
       console.log(`Waiting ${waitSec}s before next send...`);
