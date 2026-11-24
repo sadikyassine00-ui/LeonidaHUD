@@ -12,7 +12,27 @@ const DEFAULT_PER_ACCOUNT = 15;
 const MIN_DELAY_MS = 35_000;
 const MAX_DELAY_MS = 60_000;
 
-const EMAIL_SUBJECT = "quick question about your GTA 6 stream";
+const SUBJECT_OPTIONS = [
+  "your GTA 6 story % tracker",
+  "GTA 6 on console",
+  "quick question about your GTA 6 stream",
+];
+
+const GREETING_OPTIONS = [
+  "yo {username},",
+  "hey {username},",
+  "sup {username},",
+];
+
+const SIGNOFF_OPTIONS = [
+  "want me to send the link?",
+  "down to test it out?",
+  "want me to shoot over the link?",
+];
+
+function pickRandom(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -307,31 +327,38 @@ function buildRotatedAssignments(candidates, senderPool, countsToday, perAccount
   return assignments;
 }
 
-function renderEmailText(username) {
+function renderEmailMessage(username) {
   const cleanName = String(username || "").trim();
   if (!cleanName) {
     throw new Error("Cannot personalize email with empty username");
   }
 
-  const body = [
-    `yo ${cleanName}, saw your GTA 6 stream on Twitch. i built a lightweight OBS overlay for console streamers so you can tap Wasted, Busted, and story % counters straight from your phone.`,
+  const subject = pickRandom(SUBJECT_OPTIONS);
+  const greeting = pickRandom(GREETING_OPTIONS).replace(
+    /\{username\}/gi,
+    cleanName
+  );
+  const signoff = pickRandom(SIGNOFF_OPTIONS);
+
+  const text = [
+    `${greeting} saw you grinding GTA 6 on Twitch.`,
     "",
-    "i'm unlocking full access free for 5 streamers this week to test it on stream and tell me what feels clunky.",
+    "i made a small browser tool for console players so you can tap Wasted, Busted, and live story % straight from your phone onto your stream without touching OBS.",
     "",
-    "want me to send the link over?",
+    `looking for 5 streamers to test it free this week and tell me what's broken. ${signoff}`,
   ].join("\n");
 
-  if (/\{username\}/i.test(body) || /\{username\}/i.test(EMAIL_SUBJECT)) {
-    throw new Error("Template placeholder {username} was not replaced");
+  if (/\{username\}|\{greeting\}|\{signoff\}/i.test(text) || /\{username\}/i.test(subject)) {
+    throw new Error("Template placeholder was not replaced");
   }
-  if (/[\u2014\u2013]/.test(body) || /[\u2014\u2013]/.test(EMAIL_SUBJECT)) {
+  if (/[\u2014\u2013]/.test(text) || /[\u2014\u2013]/.test(subject)) {
     throw new Error("Outreach template must not contain em/en dashes");
   }
-  if (/(https?:\/\/|www\.)/i.test(body)) {
+  if (/(https?:\/\/|www\.)/i.test(text)) {
     throw new Error("Plain-text outreach body must not contain URLs");
   }
 
-  return body;
+  return { subject, text };
 }
 
 function randomDelayMs() {
@@ -436,12 +463,12 @@ async function main() {
 
   if (!opts.send) {
     assignments.forEach(({ recipient, sender }, idx) => {
-      const body = renderEmailText(recipient.username);
+      const { subject, text } = renderEmailMessage(recipient.username);
       console.log(
         `[${idx + 1}/${assignments.length}] From: ${sender.user} (${sender.label}) -> To: ${recipient.email} (Twitch: ${recipient.username})`
       );
-      console.log(`Subject: ${EMAIL_SUBJECT}`);
-      console.log(body);
+      console.log(`Subject: ${subject}`);
+      console.log(text);
       console.log("-".repeat(80));
     });
     console.log(
@@ -468,12 +495,12 @@ async function main() {
   for (let i = 0; i < assignments.length; i += 1) {
     const { recipient, sender } = assignments[i];
     const transporter = transports.get(sender.user);
-    const text = renderEmailText(recipient.username);
+    const { subject, text } = renderEmailMessage(recipient.username);
 
     const info = await transporter.sendMail({
       from: sender.user,
       to: recipient.email,
-      subject: EMAIL_SUBJECT,
+      subject,
       text,
     });
 
