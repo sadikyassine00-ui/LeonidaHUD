@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "find-streamers": "node scripts/find-twitch-streamers.mjs",
+    "next-dm": "node scripts/next-dm.js",
     "outreach:twitch": "node scripts/find-twitch-streamers.mjs",
     "send-invites": "node scripts/send-outreach-emails.mjs"
   },
