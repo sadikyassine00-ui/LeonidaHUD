@@ -6,8 +6,10 @@ import path from "node:path";
 const ROOT_DIR = process.cwd();
 const OUT_DIR = path.join(ROOT_DIR, "scripts", "out");
 const MASTER_CSV_FILE = path.join(ROOT_DIR, "scripts", "master-leads.csv");
+const DISCORD_CSV_FILE = path.join(ROOT_DIR, "scripts", "discord-leads.csv");
 const HISTORY_FILE = path.join(OUT_DIR, "seen-streamers.json");
 
+const TWITCH_GQL_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko";
 const DEFAULT_CATEGORY = "Grand Theft Auto VI";
 const DEFAULT_MIN_VIEWERS = 5;
 const DEFAULT_MAX_VIEWERS = 200;
@@ -84,6 +86,7 @@ function parseCliArgs(argv) {
     noHistory: false,
     watch: false,
     intervalMinutes: DEFAULT_WATCH_INTERVAL_MIN,
+    backfillDiscord: false,
     reset: false,
     save: null,
     help: false,
@@ -105,6 +108,8 @@ function parseCliArgs(argv) {
       opts.hasEmail = false;
     } else if (arg === "--no-history") {
       opts.noHistory = true;
+    } else if (arg === "--backfill-discord") {
+      opts.backfillDiscord = true;
     } else if (arg === "--watch") {
       opts.watch = true;
     } else if (arg === "--interval" && argv[i + 1]) {
@@ -169,8 +174,9 @@ Options:
   --console-only     Only show streams matching PS5, Xbox, or console in title/tags
   --watch            Keep running and append new leads every --interval minutes
   --interval <min>   Watch interval in minutes (default: ${DEFAULT_WATCH_INTERVAL_MIN})
+  --backfill-discord Scan Twitch GQL social links/panels for all rows in master-leads.csv
   --no-history       Ignore and do not update seen history (inspect full live pool)
-  --reset            Clear seen history and scripts/master-leads.csv before scanning
+  --reset            Clear seen history, master-leads.csv, and discord-leads.csv before scanning
   --save=csv|json|both  Also save timestamped report(s) to scripts/out/
   -h, --help         Show this help message
 `);
@@ -210,6 +216,9 @@ function clearSeenHistory() {
   }
   if (fs.existsSync(MASTER_CSV_FILE)) {
     fs.unlinkSync(MASTER_CSV_FILE);
+  }
+  if (fs.existsSync(DISCORD_CSV_FILE)) {
+    fs.unlinkSync(DISCORD_CSV_FILE);
   }
 }
 
@@ -305,6 +314,32 @@ function detectConsoleSignals(title, tags) {
   return matches;
 }
 
+function normalizeDiscordInvite(raw) {
+  const match = String(raw || "").match(
+    /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg|discord\.com\/invite|discordapp\.com\/invite)\/([a-zA-Z0-9-]+)/i
+  );
+  if (!match || !match[1]) return null;
+  const code = match[1].replace(/[.,;:!?)]+$/, "");
+  if (!code) return null;
+  return `https://discord.gg/${code}`;
+}
+
+function extractDiscordInvitesFromTexts(texts) {
+  const found = [];
+  const seen = new Set();
+  for (const rawText of texts) {
+    const matches = String(rawText || "").match(DISCORD_REGEX) || [];
+    for (const rawMatch of matches) {
+      const normalized = normalizeDiscordInvite(rawMatch);
+      if (normalized && !seen.has(normalized)) {
+        seen.add(normalized);
+        found.push(normalized);
+      }
+    }
+  }
+  return found;
+}
+
 function extractBioContacts(description) {
   const text = String(description || "");
   const rawEmails = text.match(EMAIL_REGEX) || [];
@@ -321,17 +356,90 @@ function extractBioContacts(description) {
     )
   );
 
-  const rawDiscords = text.match(DISCORD_REGEX) || [];
-  const discordLinks = Array.from(
-    new Set(
-      rawDiscords.map((link) => {
-        const cleaned = link.replace(/[.,;:!?)]+$/, "");
-        return /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
-      })
-    )
-  );
+  const discordLinks = extractDiscordInvitesFromTexts([text]);
 
   return { emails, discordLinks };
+}
+
+async function fetchGqlAboutInBatches(logins) {
+  const byLogin = new Map();
+  const uniqueLogins = Array.from(
+    new Set(logins.map((l) => String(l || "").trim().toLowerCase()).filter(Boolean))
+  );
+  if (uniqueLogins.length === 0) return byLogin;
+
+  const query = `
+    query ChannelAbout($login: String!) {
+      user(login: $login) {
+        login
+        description
+        channel {
+          socialMedias {
+            url
+            title
+          }
+        }
+        panels {
+          ... on DefaultPanel {
+            title
+            description
+            linkURL
+          }
+        }
+      }
+    }
+  `;
+
+  for (let i = 0; i < uniqueLogins.length; i += 25) {
+    const chunk = uniqueLogins.slice(i, i + 25);
+    const body = chunk.map((login) => ({
+      query,
+      variables: { login },
+    }));
+
+    try {
+      const res = await fetch("https://gql.twitch.tv/gql", {
+        method: "POST",
+        headers: {
+          "Client-Id": TWITCH_GQL_CLIENT_ID,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) continue;
+
+      const results = await res.json();
+      if (!Array.isArray(results)) continue;
+
+      for (let idx = 0; idx < results.length; idx += 1) {
+        const login = chunk[idx];
+        const user = results[idx]?.data?.user;
+        if (!user) continue;
+
+        const texts = [user.description];
+        const socials = Array.isArray(user.channel?.socialMedias)
+          ? user.channel.socialMedias
+          : [];
+        for (const social of socials) {
+          if (social?.url) texts.push(social.url);
+          if (social?.title) texts.push(social.title);
+        }
+
+        const panels = Array.isArray(user.panels) ? user.panels : [];
+        for (const panel of panels) {
+          if (panel?.linkURL) texts.push(panel.linkURL);
+          if (panel?.description) texts.push(panel.description);
+          if (panel?.title) texts.push(panel.title);
+        }
+
+        byLogin.set(login, extractDiscordInvitesFromTexts(texts));
+      }
+    } catch {
+      // Keep Helix bio results even if GQL batch fails transiently
+    }
+  }
+
+  return byLogin;
 }
 
 async function fetchUsersInBatches(clientId, token, userIds) {
@@ -420,7 +528,7 @@ async function fetchCandidateStreams(clientId, token, gameId, opts, seenHistory)
   );
 
   let excludedPartners = 0;
-  const enriched = [];
+  const nonPartners = [];
 
   for (const item of rawCandidates) {
     const profile = usersById.get(item.userId);
@@ -438,18 +546,38 @@ async function fetchCandidateStreams(clientId, token, gameId, opts, seenHistory)
       .trim();
     const { emails, discordLinks } = extractBioContacts(profile?.description);
 
-    if (opts.hasEmail) {
-      if (emails.length === 0) continue;
-    } else if (opts.hasContact) {
-      if (emails.length === 0 && discordLinks.length === 0) continue;
+    if (opts.hasEmail && emails.length === 0) {
+      continue;
     }
 
-    enriched.push({
+    nonPartners.push({
       ...item,
       broadcasterType: broadcasterType || "standard",
       emails,
       discordLinks,
       description,
+    });
+  }
+
+  const gqlDiscordsByLogin = opts.hasEmail
+    ? new Map()
+    : await fetchGqlAboutInBatches(nonPartners.map((s) => s.login));
+
+  const enriched = [];
+  for (const item of nonPartners) {
+    const loginKey = String(item.login || "").toLowerCase();
+    const gqlLinks = gqlDiscordsByLogin.get(loginKey) || [];
+    const mergedDiscords = Array.from(
+      new Set([...item.discordLinks, ...gqlLinks])
+    );
+
+    if (!opts.hasEmail && opts.hasContact) {
+      if (item.emails.length === 0 && mergedDiscords.length === 0) continue;
+    }
+
+    enriched.push({
+      ...item,
+      discordLinks: mergedDiscords,
     });
   }
 
@@ -653,6 +781,96 @@ function appendMasterCsv(streams) {
   };
 }
 
+const DISCORD_CSV_HEADERS = [
+  "discovered_at",
+  "username",
+  "discord",
+  "viewer_count",
+  "broadcaster_type",
+  "title",
+  "about_url",
+  "dm_status",
+];
+
+function loadDiscordCsvIndex() {
+  const existingUsernames = new Set();
+  const existingDiscords = new Set();
+  if (!fs.existsSync(DISCORD_CSV_FILE)) {
+    return { existingUsernames, existingDiscords, totalRows: 0 };
+  }
+
+  const raw = fs.readFileSync(DISCORD_CSV_FILE, "utf8");
+  const records = parseCsvRecords(raw);
+  for (const row of records) {
+    const username = (row.username || "").trim().toLowerCase();
+    const discord = normalizeDiscordInvite(row.discord || "");
+    if (username) existingUsernames.add(username);
+    if (discord) existingDiscords.add(discord);
+  }
+
+  return {
+    existingUsernames,
+    existingDiscords,
+    totalRows: records.length,
+  };
+}
+
+function appendDiscordCsv(streams) {
+  const discordIndex = loadDiscordCsvIndex();
+  const discoveredAt = new Date().toISOString();
+  const freshRows = [];
+
+  for (const s of streams) {
+    const login = String(s.login || "").trim().toLowerCase();
+    const rawDiscord = s.discordLinks?.[0] || s.discord || "";
+    const discord = normalizeDiscordInvite(rawDiscord);
+
+    if (!login || !discord) continue;
+    if (discordIndex.existingUsernames.has(login)) continue;
+    if (discordIndex.existingDiscords.has(discord)) continue;
+
+    discordIndex.existingUsernames.add(login);
+    discordIndex.existingDiscords.add(discord);
+
+    freshRows.push(
+      [
+        discoveredAt,
+        login,
+        discord,
+        s.viewers ?? s.viewer_count ?? "",
+        s.broadcasterType || s.broadcaster_type || "standard",
+        s.title || "",
+        s.aboutUrl || s.about_url || `https://www.twitch.tv/${login}/about`,
+        "pending",
+      ]
+        .map(escapeCsvCell)
+        .join(",")
+    );
+  }
+
+  if (freshRows.length === 0) {
+    return {
+      filePath: DISCORD_CSV_FILE,
+      appendedCount: 0,
+      totalRows: discordIndex.totalRows,
+    };
+  }
+
+  fs.mkdirSync(path.dirname(DISCORD_CSV_FILE), { recursive: true });
+  const needsHeader =
+    !fs.existsSync(DISCORD_CSV_FILE) ||
+    fs.statSync(DISCORD_CSV_FILE).size === 0;
+  const header = DISCORD_CSV_HEADERS.join(",");
+  const chunk = (needsHeader ? [header, ...freshRows] : freshRows).join("\n") + "\n";
+  fs.appendFileSync(DISCORD_CSV_FILE, chunk, "utf8");
+
+  return {
+    filePath: DISCORD_CSV_FILE,
+    appendedCount: freshRows.length,
+    totalRows: discordIndex.totalRows + freshRows.length,
+  };
+}
+
 function saveReport(streams, saveMode, meta) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const stamp = new Date()
@@ -778,6 +996,7 @@ async function runScanOnce(opts, credentials, quietWatch = false) {
   const discordCount = finalStreams.filter((s) => s.discordLinks.length > 0).length;
 
   const appendResult = appendMasterCsv(finalStreams);
+  const discordResult = appendDiscordCsv(finalStreams);
 
   if (!opts.noHistory && finalStreams.length > 0) {
     for (const s of finalStreams) {
@@ -786,13 +1005,13 @@ async function runScanOnce(opts, credentials, quietWatch = false) {
     saveSeenHistory(seenHistory);
   }
 
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const summaryLine = `[${hh}:${mm}] Emails: +${appendResult.appendedEmails} (Total: ${appendResult.totalRows}) | Discords: +${discordResult.appendedCount} (Total: ${discordResult.totalRows})`;
+
   if (quietWatch) {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    console.log(
-      `[${hh}:${mm}] Added ${appendResult.appendedCount} new lead(s) (${appendResult.appendedEmails} email(s)) | Total master list: ${appendResult.totalRows}`
-    );
+    console.log(summaryLine);
     return;
   }
 
@@ -809,9 +1028,7 @@ async function runScanOnce(opts, credentials, quietWatch = false) {
   console.log("-".repeat(88));
 
   if (finalStreams.length === 0) {
-    console.log(
-      `No fresh streams match your filters right now. Total master list: ${appendResult.totalRows}`
-    );
+    console.log("No fresh streams match your filters right now.");
   } else {
     finalStreams.forEach((s, idx) => {
       const rank = String(idx + 1).padStart(2, "0");
@@ -835,12 +1052,10 @@ async function runScanOnce(opts, credentials, quietWatch = false) {
         console.log(`    Tags:    ${s.tags.slice(0, 8).join(", ")}`);
       }
     });
-
-    console.log("-".repeat(88));
-    console.log(
-      `Appended ${appendResult.appendedCount} new lead(s) to ${path.relative(ROOT_DIR, appendResult.filePath)} | Total master list: ${appendResult.totalRows}`
-    );
   }
+
+  console.log("-".repeat(88));
+  console.log(summaryLine);
 
   if (opts.save) {
     const files = saveReport(finalStreams, opts.save, {
@@ -859,6 +1074,64 @@ async function runScanOnce(opts, credentials, quietWatch = false) {
   }
 }
 
+async function runBackfillDiscord() {
+  if (!fs.existsSync(MASTER_CSV_FILE)) {
+    console.error(
+      `Master CSV not found: ${path.relative(ROOT_DIR, MASTER_CSV_FILE)}`
+    );
+    process.exit(1);
+  }
+
+  const rawMaster = fs.readFileSync(MASTER_CSV_FILE, "utf8");
+  const masterRows = parseCsvRecords(rawMaster);
+  const discordIndex = loadDiscordCsvIndex();
+
+  const pendingRows = [];
+  const seenLogins = new Set();
+  for (const row of masterRows) {
+    const login = String(row.username || "").trim().toLowerCase();
+    if (!login || seenLogins.has(login)) continue;
+    seenLogins.add(login);
+    if (discordIndex.existingUsernames.has(login)) continue;
+    pendingRows.push({ ...row, login });
+  }
+
+  console.log(
+    `Backfilling Discord invites from ${masterRows.length} master-leads.csv rows (${pendingRows.length} not yet in discord-leads.csv)...`
+  );
+
+  const gqlDiscordsByLogin = await fetchGqlAboutInBatches(
+    pendingRows.map((r) => r.login)
+  );
+
+  const enriched = [];
+  for (const row of pendingRows) {
+    const existingInvite = normalizeDiscordInvite(row.discord || "");
+    const gqlInvites = gqlDiscordsByLogin.get(row.login) || [];
+    const discordLinks = Array.from(
+      new Set([...(existingInvite ? [existingInvite] : []), ...gqlInvites])
+    );
+    if (discordLinks.length === 0) continue;
+
+    enriched.push({
+      login: row.login,
+      discordLinks,
+      viewers: row.viewer_count || "",
+      broadcasterType: row.broadcaster_type || "standard",
+      title: row.title || "",
+      aboutUrl: row.about_url || `https://www.twitch.tv/${row.login}/about`,
+    });
+  }
+
+  const discordResult = appendDiscordCsv(enriched);
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  console.log(
+    `[${hh}:${mm}] Backfill complete | Emails: +0 (Total: ${masterRows.length}) | Discords: +${discordResult.appendedCount} (Total: ${discordResult.totalRows})`
+  );
+}
+
 async function main() {
   const opts = parseCliArgs(process.argv.slice(2));
   if (opts.help) {
@@ -868,7 +1141,14 @@ async function main() {
 
   if (opts.reset) {
     clearSeenHistory();
-    console.log("Cleared previously surfaced streamer history and master CSV.");
+    console.log(
+      "Cleared previously surfaced streamer history, master CSV, and Discord CSV."
+    );
+  }
+
+  if (opts.backfillDiscord) {
+    await runBackfillDiscord();
+    return;
   }
 
   const credentials = resolveTwitchCredentials();

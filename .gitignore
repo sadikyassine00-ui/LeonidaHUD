@@ -26,6 +26,7 @@
 /scripts/out/
 /scripts/console-streamers.csv
 /scripts/master-leads.csv
+/scripts/discord-leads.csv
 /scripts/emailed-history.json
 
 # debug
